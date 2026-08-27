@@ -23,7 +23,7 @@
 
 ## Entregas
 
-### 1ª Etapa — 28/08
+### 1ª Etapa — 31/08
 
 - Tema / Área
 - Título Provisório
