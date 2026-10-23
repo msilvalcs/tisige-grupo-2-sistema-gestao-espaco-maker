@@ -42,6 +42,26 @@ const movementSchema = z.object({
     .refine((n) => n !== 0, 'Quantidade deve ser diferente de zero.'),
   reason: z.string().trim().min(5).max(500),
 });
+const bookingSchema = z.object({
+  equipment_id: identifier,
+  material_id: identifier,
+  project_id: identifier,
+  started_at: z.string().trim().refine((value) => !Number.isNaN(Date.parse(value)), 'Informe uma data válida.'),
+  duration_min: z.number().int().min(1).max(1440),
+  material_grams: z.number().finite().min(1).max(99999).multipleOf(0.001),
+  notes: z.string().trim().max(2000).default(''),
+  confirm_low_stock: z.boolean().default(false),
+});
+const cancelBookingSchema = z.object({ reason: z.string().trim().min(5).max(255) });
+const rescheduleBookingSchema = z.object({
+  started_at: z.string().trim().refine((value) => !Number.isNaN(Date.parse(value)), 'Informe uma data válida.'),
+  duration_min: z.number().int().min(1).max(1440),
+});
+const transitionBookingSchema = z.object({
+  status: z.enum(['confirmed', 'in_progress', 'done', 'interrupted']),
+  actual_material_grams: z.number().finite().min(0).max(99999).multipleOf(0.001).optional(),
+  reason: z.string().trim().min(5).max(255).optional(),
+});
 export const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
@@ -315,6 +335,263 @@ app.post('/api/materials/:id/movements', manager, async (req, res) => {
     ).rows[0];
   });
   res.status(201).json(movement);
+});
+const bookingSelect = `
+  SELECT b.*, u.name AS user_name, e.code AS equipment_code, e.model AS equipment_model,
+         e.technology AS equipment_technology, m.name AS material_name, m.unit AS material_unit,
+         p.name AS project_name
+  FROM bookings b
+  JOIN users u ON u.id=b.user_id
+  JOIN equipment e ON e.id=b.equipment_id
+  JOIN materials m ON m.id=b.material_id
+  JOIN projects p ON p.id=b.project_id
+`;
+function bookingId(req) {
+  return identifier.parse(req.params.id);
+}
+function bookingEnd(startedAt, durationMin) {
+  return new Date(new Date(startedAt).getTime() + durationMin * 60 * 1000);
+}
+async function bookingDetails(id) {
+  const {
+    rows: [booking],
+  } = await pool.query(`${bookingSelect} WHERE b.id=$1`, [id]);
+  return booking;
+}
+app.get('/api/bookings/mine', async (req, res) => {
+  res.json(
+    (
+      await pool.query(
+        `${bookingSelect} WHERE b.user_id=$1 ORDER BY b.started_at DESC, b.id DESC`,
+        [req.user.id],
+      )
+    ).rows,
+  );
+});
+app.get('/api/bookings/today', async (_req, res) => {
+  res.json(
+    (
+      await pool.query(
+        `${bookingSelect} WHERE b.started_at::date=CURRENT_DATE ORDER BY b.started_at, b.id`,
+      )
+    ).rows,
+  );
+});
+app.post('/api/bookings', async (req, res) => {
+  const input = bookingSchema.parse(req.body);
+  const startedAt = new Date(input.started_at);
+  if (startedAt <= new Date()) throw fail(400, 'O início do agendamento deve estar no futuro.');
+  const idempotencyKey = req.get('Idempotency-Key')?.trim() || null;
+  if (idempotencyKey && idempotencyKey.length > 200)
+    throw fail(400, 'A chave de idempotência é muito longa.');
+  const result = await transaction(async (client) => {
+    if (idempotencyKey) {
+      const {
+        rows: [existing],
+      } = await client.query('SELECT id FROM bookings WHERE user_id=$1 AND idempotency_key=$2', [
+        req.user.id,
+        idempotencyKey,
+      ]);
+      if (existing) return { id: existing.id, replayed: true };
+    }
+    const {
+      rows: [equipment],
+    } = await client.query('SELECT * FROM equipment WHERE id=$1 FOR UPDATE', [input.equipment_id]);
+    if (!equipment) throw fail(400, 'Equipamento não encontrado.');
+    if (!equipment.active) throw fail(400, 'Equipamento inativo e indisponível para reservas.');
+    const {
+      rows: [material],
+    } = await client.query('SELECT * FROM materials WHERE id=$1 FOR UPDATE', [input.material_id]);
+    if (!material) throw fail(400, 'Insumo não encontrado.');
+    if (!material.active) throw fail(400, 'Insumo inativo.');
+    if (material.technology !== equipment.technology)
+      throw fail(400, 'O insumo não é compatível com a tecnologia do equipamento.');
+    const {
+      rows: [project],
+    } = await client.query('SELECT * FROM projects WHERE id=$1', [input.project_id]);
+    if (!project || !project.active) throw fail(400, 'Projeto não encontrado ou inativo.');
+    if (req.user.role !== 'manager' && project.owner_id !== req.user.id)
+      throw fail(403, 'Você só pode agendar um projeto sob sua responsabilidade.');
+    const endedAt = bookingEnd(startedAt, input.duration_min);
+    const conflict = await client.query(
+      `SELECT 1 FROM bookings
+       WHERE equipment_id=$1 AND status IN ('scheduled','confirmed','in_progress')
+         AND started_at < $3::timestamptz
+         AND started_at + duration_min * interval '1 minute' > $2::timestamptz
+       LIMIT 1`,
+      [input.equipment_id, startedAt.toISOString(), endedAt.toISOString()],
+    );
+    if (conflict.rowCount) throw fail(409, 'Já existe um agendamento que conflita com este horário.');
+    if (Number(material.reserved) + input.material_grams > Number(material.physical) && !input.confirm_low_stock)
+      return { warning: 'Saldo insuficiente', requires_confirmation: true };
+    const {
+      rows: [booking],
+    } = await client.query(
+      `INSERT INTO bookings
+        (user_id,equipment_id,material_id,project_id,started_at,duration_min,material_grams,notes,idempotency_key)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [
+        req.user.id,
+        input.equipment_id,
+        input.material_id,
+        input.project_id,
+        startedAt.toISOString(),
+        input.duration_min,
+        input.material_grams,
+        input.notes,
+        idempotencyKey,
+      ],
+    );
+    await client.query('UPDATE materials SET reserved=reserved+$1 WHERE id=$2', [
+      input.material_grams,
+      input.material_id,
+    ]);
+    await client.query(
+      `INSERT INTO stock_movements(material_id,author_id,quantity,resulting_balance,reason)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [
+        input.material_id,
+        req.user.id,
+        -input.material_grams,
+        material.physical,
+        `Reserva automática - booking ${booking.id}`,
+      ],
+    );
+    return { id: booking.id, replayed: false };
+  });
+  if (result.warning) return res.status(200).json(result);
+  res.status(result.replayed ? 200 : 201).json(await bookingDetails(result.id));
+});
+app.patch('/api/bookings/:id/cancel', async (req, res) => {
+  const id = bookingId(req);
+  const { reason } = cancelBookingSchema.parse(req.body);
+  const booking = await transaction(async (client) => {
+    const {
+      rows: [current],
+    } = await client.query('SELECT * FROM bookings WHERE id=$1 FOR UPDATE', [id]);
+    if (!current) throw fail(404, 'Agendamento não encontrado.');
+    if (req.user.role !== 'manager' && current.user_id !== req.user.id)
+      throw fail(403, 'Você não pode cancelar este agendamento.');
+    if (!['scheduled', 'confirmed'].includes(current.status))
+      throw fail(409, 'Agendamento não pode ser cancelado neste status.');
+    const {
+      rows: [material],
+    } = await client.query(
+      'UPDATE materials SET reserved=reserved-$1 WHERE id=$2 AND reserved >= $1 RETURNING physical',
+      [current.material_grams, current.material_id],
+    );
+    if (!material) throw fail(409, 'A reserva de estoque já foi alterada; recarregue o agendamento.');
+    await client.query(
+      `INSERT INTO stock_movements(material_id,author_id,quantity,resulting_balance,reason)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [
+        current.material_id,
+        req.user.id,
+        current.material_grams,
+        material.physical,
+        `Devolução - cancelamento booking ${id}`,
+      ],
+    );
+    return (
+      await client.query(
+        `UPDATE bookings SET status='cancelled',cancel_reason=$1,cancelled_at=now(),updated_at=now()
+         WHERE id=$2 RETURNING id`,
+        [reason, id],
+      )
+    ).rows[0];
+  });
+  res.json(await bookingDetails(booking.id));
+});
+app.patch('/api/bookings/:id/reschedule', async (req, res) => {
+  const id = bookingId(req);
+  const input = rescheduleBookingSchema.parse(req.body);
+  const startedAt = new Date(input.started_at);
+  if (startedAt <= new Date()) throw fail(400, 'O início do agendamento deve estar no futuro.');
+  const updated = await transaction(async (client) => {
+    const {
+      rows: [current],
+    } = await client.query('SELECT * FROM bookings WHERE id=$1 FOR UPDATE', [id]);
+    if (!current) throw fail(404, 'Agendamento não encontrado.');
+    if (req.user.role !== 'manager' && current.user_id !== req.user.id)
+      throw fail(403, 'Você não pode reagendar este agendamento.');
+    if (!['scheduled', 'confirmed'].includes(current.status))
+      throw fail(409, 'Somente agendamentos previstos podem ser reagendados.');
+    const endedAt = bookingEnd(startedAt, input.duration_min);
+    const conflict = await client.query(
+      `SELECT 1 FROM bookings
+       WHERE id<>$1 AND equipment_id=$2 AND status IN ('scheduled','confirmed','in_progress')
+         AND started_at < $4::timestamptz
+         AND started_at + duration_min * interval '1 minute' > $3::timestamptz
+       LIMIT 1`,
+      [id, current.equipment_id, startedAt.toISOString(), endedAt.toISOString()],
+    );
+    if (conflict.rowCount) throw fail(409, 'Já existe um agendamento que conflita com este horário.');
+    return (
+      await client.query(
+        `UPDATE bookings SET started_at=$1,duration_min=$2,updated_at=now() WHERE id=$3 RETURNING id`,
+        [startedAt.toISOString(), input.duration_min, id],
+      )
+    ).rows[0];
+  });
+  res.json(await bookingDetails(updated.id));
+});
+app.patch('/api/bookings/:id/status', async (req, res) => {
+  const id = bookingId(req);
+  const input = transitionBookingSchema.parse(req.body);
+  const updated = await transaction(async (client) => {
+    const {
+      rows: [current],
+    } = await client.query('SELECT * FROM bookings WHERE id=$1 FOR UPDATE', [id]);
+    if (!current) throw fail(404, 'Agendamento não encontrado.');
+    if (req.user.role !== 'manager' && current.user_id !== req.user.id)
+      throw fail(403, 'Você não pode atualizar este agendamento.');
+    const allowed = {
+      scheduled: ['confirmed'],
+      confirmed: ['in_progress'],
+      in_progress: ['done', 'interrupted'],
+    };
+    if (!allowed[current.status]?.includes(input.status))
+      throw fail(409, 'Transição de status não permitida.');
+    if (input.status === 'interrupted' && !input.reason)
+      throw fail(400, 'Informe o motivo da interrupção.');
+    if (!['done', 'interrupted'].includes(input.status))
+      return (
+        await client.query(
+          'UPDATE bookings SET status=$1,updated_at=now() WHERE id=$2 RETURNING id',
+          [input.status, id],
+        )
+      ).rows[0];
+    const actual = input.actual_material_grams ?? Number(current.material_grams);
+    const {
+      rows: [material],
+    } = await client.query(
+      `UPDATE materials
+       SET physical=physical-$1,reserved=reserved-$2
+       WHERE id=$3 AND physical >= $1 AND reserved >= $2
+       RETURNING physical`,
+      [actual, current.material_grams, current.material_id],
+    );
+    if (!material) throw fail(409, 'Saldo físico insuficiente para registrar o consumo real.');
+    await client.query(
+      `INSERT INTO stock_movements(material_id,author_id,quantity,resulting_balance,reason)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [
+        current.material_id,
+        req.user.id,
+        -actual,
+        material.physical,
+        `Consumo real - booking ${id}`,
+      ],
+    );
+    return (
+      await client.query(
+        `UPDATE bookings SET status=$1,actual_material_grams=$2,interrupted_reason=$3,
+           completed_at=now(),updated_at=now() WHERE id=$4 RETURNING id`,
+        [input.status, actual, input.status === 'interrupted' ? input.reason : null, id],
+      )
+    ).rows[0];
+  });
+  res.json(await bookingDetails(updated.id));
 });
 app.use('/api', (_req, res) => res.status(404).json({ message: 'Recurso não encontrado.' }));
 if (config.production) {
