@@ -398,6 +398,96 @@ const bookingSelect = `
   JOIN materials m ON m.id=b.material_id
   JOIN projects p ON p.id=b.project_id
 `;
+app.get('/api/dashboard', async (req, res) => {
+  const managerView = req.user.role === 'manager';
+  const [summary, todayBookings, stockAlerts] = await Promise.all([
+    pool.query(
+      `SELECT
+         CASE
+           WHEN EXTRACT(HOUR FROM CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo') BETWEEN 5 AND 11 THEN 'Bom dia'
+           WHEN EXTRACT(HOUR FROM CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo') BETWEEN 12 AND 17 THEN 'Boa tarde'
+           ELSE 'Boa noite'
+         END AS saudacao,
+         (SELECT count(*) FROM bookings WHERE started_at::date=CURRENT_DATE) AS bookings_today,
+         (SELECT count(*) FROM materials WHERE active AND physical-reserved <= minimum) AS materials_alert,
+         (SELECT count(*) FROM equipment WHERE active) AS active_equipment,
+         (SELECT count(*) FROM projects WHERE active AND ($1::boolean OR owner_id=$2)) AS active_projects`,
+      [managerView, req.user.id],
+    ),
+    pool.query(
+      `${bookingSelect} WHERE b.started_at::date=CURRENT_DATE ORDER BY b.started_at, b.id`,
+    ),
+    pool.query(
+      `SELECT id,name,physical-reserved AS available,unit,minimum
+       FROM materials
+       WHERE active AND physical-reserved <= minimum
+       ORDER BY available ASC,name ASC LIMIT 5`,
+    ),
+  ]);
+  const data = summary.rows[0];
+  const kpis = {
+    bookings_today: Number(data.bookings_today),
+    materials_alert: Number(data.materials_alert),
+    active_equipment: Number(data.active_equipment),
+    active_projects: Number(data.active_projects),
+  };
+  res.json({
+    saudacao: data.saudacao,
+    nome_usuario: req.user.name,
+    ...kpis,
+    kpis,
+    today_bookings: todayBookings.rows,
+    stock_alerts: stockAlerts.rows,
+  });
+});
+app.get('/api/metrics', manager, async (_req, res) => {
+  const [summary, materialByBooking, cancelledBookings, maintenanceByEquipment] = await Promise.all([
+    pool.query(
+      `SELECT
+         ROUND(COALESCE(SUM(CASE WHEN b.status='done' AND m.technology='FDM' THEN b.material_grams ELSE 0 END),0) / 1000, 1) AS material_used_kg,
+         count(*) FILTER (WHERE b.status='done') AS bookings_done,
+         count(*) FILTER (WHERE b.status='cancelled') AS bookings_cancelled,
+         (SELECT count(*) FROM maintenance_logs) AS maintenance_count
+       FROM bookings b JOIN materials m ON m.id=b.material_id`,
+    ),
+    pool.query(
+      `SELECT b.id,p.name AS project_name,m.name AS material_name,b.material_grams
+       FROM bookings b JOIN projects p ON p.id=b.project_id JOIN materials m ON m.id=b.material_id
+       WHERE b.status='done' AND m.technology='FDM'
+       ORDER BY b.completed_at DESC NULLS LAST,b.started_at DESC`,
+    ),
+    pool.query(
+      `SELECT b.id,p.name AS project_name,b.cancel_reason,b.cancelled_at
+       FROM bookings b JOIN projects p ON p.id=b.project_id
+       WHERE b.status='cancelled'
+       ORDER BY b.cancelled_at DESC NULLS LAST,b.started_at DESC`,
+    ),
+    pool.query(
+      `SELECT e.id,e.code AS equipment_code,e.model AS equipment_model,
+              latest.performed_at,latest.next_due,
+              trunc(COALESCE(SUM(b.duration_min),0)::numeric / 60)::integer AS hours,
+              CASE WHEN latest.next_due < CURRENT_DATE THEN 'overdue' ELSE 'ok' END AS status
+       FROM equipment e
+       LEFT JOIN LATERAL (
+         SELECT performed_at,next_due FROM maintenance_logs
+         WHERE equipment_id=e.id ORDER BY performed_at DESC,id DESC LIMIT 1
+       ) latest ON true
+       LEFT JOIN bookings b ON b.equipment_id=e.id AND b.status='done'
+       GROUP BY e.id,e.code,e.model,latest.performed_at,latest.next_due
+       ORDER BY e.code`,
+    ),
+  ]);
+  const data = summary.rows[0];
+  res.json({
+    material_used_kg: Number(data.material_used_kg),
+    bookings_done: Number(data.bookings_done),
+    bookings_cancelled: Number(data.bookings_cancelled),
+    maintenance_count: Number(data.maintenance_count),
+    material_by_booking: materialByBooking.rows,
+    cancelled_bookings: cancelledBookings.rows,
+    maintenance_by_equipment: maintenanceByEquipment.rows,
+  });
+});
 function bookingId(req) {
   return identifier.parse(req.params.id);
 }
