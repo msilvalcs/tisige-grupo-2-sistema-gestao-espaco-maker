@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Box, Layers3, ArrowUpRight } from 'lucide-react';
+import { Box, Layers3, ArrowUpRight, Eye, EyeOff } from 'lucide-react';
 import { api } from '../lib/api.mjs';
 import { Field } from './ui.jsx';
 export function Login({ onLogin, initialError }) {
   const [error, setError] = useState(initialError),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [showPassword, setShowPassword] = useState(false);
   async function submit(event) {
     event.preventDefault();
     setBusy(true);
@@ -59,15 +60,29 @@ export function Login({ onLogin, initialError }) {
             required
             maxLength={254}
           />
-          <Field
-            label="Senha"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="Sua senha"
-            required
-            maxLength={128}
-          />
+          <div className="field">
+            <label htmlFor="login-password">Senha</label>
+            <div className="password-input">
+              <input
+                id="login-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="Sua senha"
+                required
+                maxLength={128}
+              />
+              <button
+                type="button"
+                className="icon-button password-toggle"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-controls="login-password"
+                onClick={() => setShowPassword((visible) => !visible)}
+              >
+                {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </div>
+          </div>
           {error && (
             <div className="error" role="alert">
               {error}
