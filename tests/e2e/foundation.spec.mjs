@@ -33,7 +33,13 @@ test('login inválido e sessão persistida após recarga', async ({ page }) => {
   ).toBeTruthy();
   await expect(page.getByText(/Dados do PostgreSQL/)).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('dashboard.png'), fullPage: true });
+  await page.route('**/api/auth/logout', async (route) => {
+    // Simulate a slow connection so reload cannot race the logout request.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Sair da conta' }).click();
+  await expect(page.getByRole('button', { name: 'Entrar no SIGES' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Entrar no SIGES' })).toBeVisible();
 });

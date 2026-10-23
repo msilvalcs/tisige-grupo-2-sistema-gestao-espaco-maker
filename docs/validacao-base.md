@@ -50,3 +50,7 @@ A correção exclui respostas bem-sucedidas do contador e executa os testes E2E 
 - [Visão geral celular](evidencias/base-mobile.png)
 
 As capturas incluem dados E2E criados pelas execuções anteriores. Os contadores refletem esses registros persistidos.
+
+## Correção da instabilidade do logout nos testes E2E
+
+A falha do GitHub Actions foi reproduzida pelo navegador com atraso de 500 ms na requisição de logout: recarregar logo após clicar em Sair interrompia a requisição e mantinha a sessão. O teste agora espera a tela de login antes de recarregar e verifica novamente o estado desconectado. A simulação de conexão lenta permanece no cenário como regressão; timeouts e retries não foram aumentados.
