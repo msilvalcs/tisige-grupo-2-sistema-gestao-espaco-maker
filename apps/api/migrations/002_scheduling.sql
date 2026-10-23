@@ -1,3 +1,6 @@
+-- PostgreSQL names the original two-column check materials_check when it is
+-- declared inline; older databases can also have the explicit name below.
+ALTER TABLE materials DROP CONSTRAINT IF EXISTS materials_check;
 ALTER TABLE materials DROP CONSTRAINT IF EXISTS materials_reserved_check;
 ALTER TABLE materials ADD CONSTRAINT materials_reserved_check CHECK (reserved >= 0);
 
