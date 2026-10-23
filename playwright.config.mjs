@@ -5,7 +5,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:5174',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -17,10 +17,20 @@ export default defineConfig({
       use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://127.0.0.1:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-  },
+  webServer: [
+    {
+      command: 'npm start -w @siges/api',
+      url: 'http://127.0.0.1:3101/api/health',
+      env: { PORT: '3101' },
+      reuseExistingServer: false,
+      timeout: 30000,
+    },
+    {
+      command: 'npm run dev -w @siges/web -- --port 5174',
+      url: 'http://127.0.0.1:5174',
+      env: { SIGES_API_TARGET: 'http://127.0.0.1:3101' },
+      reuseExistingServer: false,
+      timeout: 30000,
+    },
+  ],
 });

@@ -4,8 +4,8 @@ Data: 22/10/2026. Ambiente: Windows, Node.js 24.8, PostgreSQL 17.6 local real, A
 
 ## Resultado
 
-- 9 testes HTTP de integração passaram com banco PostgreSQL temporário.
-- 10 testes de navegador passaram, cinco cenários em desktop (1440x1000) e celular (390x844).
+- 11 testes HTTP de integração passaram com banco PostgreSQL temporário.
+- 12 testes de navegador passaram, seis cenários em desktop (1440x1000) e celular (390x844).
 - Lint, formatação e build verificados.
 - npm audit não encontrou vulnerabilidades na execução local.
 - Migrações e seed executados duas vezes no teste para verificar repetibilidade.
@@ -36,6 +36,12 @@ O teste concorrente começa com 10,125 ml e envia duas saídas de 10 ml. Resulta
 A execução de navegador adiciona dados E2E no banco de desenvolvimento. Capturas e relatório são gerados pelo Playwright. A revisão visual observou desktop e celular; não equivale a auditoria completa de acessibilidade ou teste de usabilidade com participantes.
 
 Nenhuma issue é encerrada por esta entrega e nenhuma política proposta é apresentada como aprovada.
+
+## Correção do bloqueio de login
+
+O erro foi reproduzido pelo formulário real em localhost:5173: credenciais válidas retornavam HTTP 429. O limitador contava logins bem-sucedidos, e os testes reutilizavam o servidor de desenvolvimento, consumindo o mesmo limite por IP.
+
+A correção exclui respostas bem-sucedidas do contador e executa os testes E2E em servidores exclusivos. A proteção de 20 tentativas malsucedidas por janela de 15 minutos permanece ativa. Os testes HTTP cobrem 25 logins válidos seguidos e o bloqueio de senhas incorretas; o navegador cobre 22 entradas e saídas consecutivas por perfil de tela. O acesso ao servidor original foi conferido novamente com HTTP 200 e abertura da visão geral.
 
 
 ## Capturas revisadas

@@ -236,3 +236,35 @@ test('logout invalida sessão no servidor', async () => {
   assert.equal((await call('/auth/logout', { method: 'POST' })).status, 204);
   assert.equal((await call('/auth/me')).status, 401);
 });
+
+test('mais de 20 logins válidos não esgotam o limite de falhas', async () => {
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const result = await call('/auth/login', {
+      method: 'POST',
+      session: null,
+      body: { email: 'gestor@siges.local', password: process.env.SEED_PASSWORD },
+    });
+    assert.equal(result.status, 200, 'Login válido ' + (attempt + 1));
+  }
+});
+
+test('senhas inválidas continuam bloqueadas após repetidas tentativas', async () => {
+  const statuses = [];
+  for (let attempt = 0; attempt < 21; attempt++) {
+    const result = await call('/auth/login', {
+      method: 'POST',
+      session: null,
+      body: { email: 'gestor@siges.local', password: 'SenhaIncorreta' },
+    });
+    statuses.push(result.status);
+  }
+  assert.ok(statuses.includes(401));
+  assert.equal(statuses.at(-1), 429);
+  const blocked = await call('/auth/login', {
+    method: 'POST',
+    session: null,
+    body: { email: 'gestor@siges.local', password: process.env.SEED_PASSWORD },
+  });
+  assert.equal(blocked.status, 429);
+  assert.match(blocked.data.message, /Muitas tentativas/);
+});

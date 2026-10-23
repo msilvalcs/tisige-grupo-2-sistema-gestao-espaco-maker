@@ -8,6 +8,15 @@ async function login(page, email = 'gestor@siges.local') {
   await page.getByRole('button', { name: 'Entrar no SIGES' }).click();
   await expect(page.getByRole('heading', { name: /Olá,/ })).toBeVisible();
 }
+
+test('entradas válidas repetidas não bloqueiam o usuário', async ({ page }) => {
+  test.setTimeout(60000);
+  for (let attempt = 0; attempt < 22; attempt++) {
+    await login(page);
+    await page.getByRole('button', { name: 'Sair da conta' }).click();
+    await expect(page.getByRole('button', { name: 'Entrar no SIGES' })).toBeVisible();
+  }
+});
 test('login inválido e sessão persistida após recarga', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('E-mail institucional').fill('gestor@siges.local');

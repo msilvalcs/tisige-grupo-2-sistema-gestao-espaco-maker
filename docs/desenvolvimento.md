@@ -35,7 +35,7 @@ O gestor cadastra pessoas, equipamentos e insumos e movimenta estoque. Usuários
 - `npm run format:check`: formatação do código.
 - `npm run build`: compilação do frontend.
 - `npm test`: integração HTTP com PostgreSQL real, criando e removendo somente um banco temporário de nome siges_test_UUID. A conta do banco precisa de CREATEDB para testes; a conta de produção não precisa dessa permissão.
-- `npx playwright install chromium` e `npm run test:e2e`: testes reais de navegador em desktop e celular. Requerem migrações e seed. O Playwright inicia a aplicação se necessário.
+- `npx playwright install chromium` e `npm run test:e2e`: testes reais de navegador em desktop e celular. Requerem migrações e seed. O Playwright inicia servidores exclusivos nas portas 3101 (API) e 5174 (frontend), sem reutilizar os servidores de desenvolvimento. O banco continua sendo o configurado por DATABASE_URL.
 - Os testes de navegador criam registros com nomes E2E e não removem os dados existentes. Execute em banco de desenvolvimento ou em um banco exclusivo de teste. A integração contínua usa PostgreSQL descartável.
 - O relatório navegável fica em playwright-report e capturas/traces de falhas em test-results.
 

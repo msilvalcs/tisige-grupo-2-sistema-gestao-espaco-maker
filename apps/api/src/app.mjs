@@ -91,6 +91,8 @@ app.post(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-8',
     legacyHeaders: false,
     message: { message: 'Muitas tentativas de acesso. Tente novamente em 15 minutos.' },
   }),
