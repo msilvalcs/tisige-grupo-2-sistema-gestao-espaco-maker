@@ -56,7 +56,11 @@ export function Modal({ modal, user, users, projects = [], equipment = [], mater
               ? 'Registrar manutenção'
               : (item.id ? 'Editar ' : 'Cadastrar ') + name;
   async function saveBooking(values, confirmLowStock = false) {
-    const startedAt = new Date(`${values.start_date}T${values.start_time}`);
+    // The confirmation step reuses the already normalized payload returned by
+    // the first request, so it has started_at instead of form date/time fields.
+    const startedAt = values.started_at
+      ? new Date(values.started_at)
+      : new Date(`${values.start_date}T${values.start_time}`);
     if (Number.isNaN(startedAt.getTime()) || startedAt <= new Date()) {
       throw new Error('Informe uma data e hora de início no futuro.');
     }
