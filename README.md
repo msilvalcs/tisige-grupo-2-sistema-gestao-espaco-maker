@@ -31,3 +31,6 @@
 
 A documentação referente à primeira etapa encontra-se em:
 `docs/01-introducao.md`
+## Aplicação executável - Entrega 01
+
+Monorepo com Node.js, React e PostgreSQL. Consulte [instruções de execução](docs/desenvolvimento.md), [requisitos e propostas](docs/requisitos-mvp.md) e [evidências de validação](docs/validacao-base.md).
