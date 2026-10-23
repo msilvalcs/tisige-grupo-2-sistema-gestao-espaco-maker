@@ -16,6 +16,9 @@ import {
   History,
   Pencil,
   Layers3,
+  CalendarDays,
+  Wrench,
+  BarChart3,
 } from 'lucide-react';
 import './styles.css';
 
@@ -30,6 +33,9 @@ const navigation = [
   ['projects', 'Projetos', FolderKanban],
   ['equipment', 'Equipamentos', Printer],
   ['materials', 'Insumos', Package],
+  ['bookings', 'Agendamentos', CalendarDays],
+  ['maintenance', 'Manutenção', Wrench],
+  ['metrics', 'Métricas', BarChart3],
   ['users', 'Pessoas', Users],
 ];
 function App() {
@@ -62,7 +68,16 @@ function App() {
 }
 function Workspace({ user, onLogout }) {
   const [page, setPage] = useState(() => location.hash.slice(1) || 'dashboard'),
-    [data, setData] = useState({ projects: [], equipment: [], materials: [], users: [] }),
+    [data, setData] = useState({
+      projects: [],
+      equipment: [],
+      materials: [],
+      users: [],
+      bookings: [],
+      maintenance: [],
+      dashboard: null,
+      metrics: null,
+    }),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [updated, setUpdated] = useState(null),
@@ -86,10 +101,31 @@ function Workspace({ user, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const [projects, equipment, materials, users] = await Promise.all(
-        ['/projects', '/equipment', '/materials', '/users'].map((path) => api(path)),
-      );
-      setData({ projects, equipment, materials, users });
+      const [projects, equipment, materials, users, extra] = await Promise.all([
+        ...['/projects', '/equipment', '/materials', '/users'].map((path) => api(path)),
+        api(
+          page === 'dashboard'
+            ? '/dashboard'
+            : page === 'bookings'
+              ? '/bookings/mine'
+              : page === 'maintenance'
+                ? '/maintenance'
+                : page === 'metrics'
+                  ? '/metrics'
+                  : '/dashboard',
+        ),
+      ]);
+      setData((current) => ({
+        ...current,
+        projects,
+        equipment,
+        materials,
+        users,
+        dashboard: page === 'dashboard' ? extra : current.dashboard,
+        bookings: page === 'bookings' ? extra : current.bookings,
+        maintenance: page === 'maintenance' ? extra : current.maintenance,
+        metrics: page === 'metrics' ? extra : current.metrics,
+      }));
       setUpdated(new Date());
     } catch (e) {
       setError(e.message);
@@ -99,12 +135,8 @@ function Workspace({ user, onLogout }) {
   }
   useEffect(() => {
     load();
-  }, []);
+  }, [page]);
   const title = navigation.find(([key]) => key === page)?.[1] || 'Página não encontrada';
-  const materialsAlert = data.materials.filter(
-    (m) => m.active && Number(m.available) <= Number(m.minimum),
-  );
-  const activeProjects = data.projects.filter((p) => p.active).length;
   async function logout() {
     try {
       await api('/auth/logout', { method: 'POST' });
@@ -122,8 +154,17 @@ function Workspace({ user, onLogout }) {
     projects: 'Organize suas ideias e acompanhe os responsáveis.',
     equipment: 'Conheça a infraestrutura do laboratório.',
     materials: 'Saldos e movimentações, com rastreabilidade.',
+    bookings: 'Reserve equipamentos com disponibilidade e consumo rastreáveis.',
+    maintenance: 'Acompanhe a manutenção preventiva dos equipamentos.',
+    metrics: 'Indicadores operacionais derivados dos registros do laboratório.',
     users: 'Quem transforma ideias em realidade.',
   };
+  function newBooking() {
+    if (page !== 'bookings') {
+      location.hash = 'bookings';
+      window.setTimeout(() => setModal({ kind: 'booking' }), 0);
+    } else setModal({ kind: 'booking' });
+  }
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -192,19 +233,21 @@ function Workspace({ user, onLogout }) {
                   : descriptions[page]}
               </p>
             </div>
-            {page !== 'dashboard' &&
-              (manager || page === 'projects') &&
+            {(page === 'dashboard' || page === 'bookings' || page === 'maintenance' || page === 'projects' || page === 'equipment' || page === 'materials' || page === 'users') &&
+              (page === 'dashboard' || manager || page === 'projects' || page === 'bookings') &&
               navigation.some(([k]) => k === page) && (
-                <button className="primary" onClick={() => setModal({ kind: page })}>
+                <button className="primary" onClick={page === 'dashboard' ? newBooking : () => setModal({ kind: page })}>
                   <Plus size={18} />
-                  {
-                    {
-                      projects: 'Novo projeto',
-                      equipment: 'Novo equipamento',
-                      materials: 'Novo insumo',
-                      users: 'Nova pessoa',
-                    }[page]
-                  }
+                  {page === 'dashboard'
+                    ? 'Novo agendamento'
+                    : {
+                        projects: 'Novo projeto',
+                        equipment: 'Novo equipamento',
+                        materials: 'Novo insumo',
+                        bookings: 'Novo agendamento',
+                        maintenance: 'Registrar manutenção',
+                        users: 'Nova pessoa',
+                      }[page]}
                 </button>
               )}
           </div>
@@ -229,103 +272,13 @@ function Workspace({ user, onLogout }) {
             !error && (
               <>
                 {page === 'dashboard' ? (
-                  <>
-                    <div className="stats">
-                      <Stat
-                        label="Equipamentos ativos"
-                        value={data.equipment.filter((e) => e.active).length}
-                        note={'de ' + data.equipment.length + ' cadastrados'}
-                        icon={Printer}
-                      />
-                      <Stat
-                        label="Projetos ativos"
-                        value={activeProjects}
-                        note={manager ? 'Em todo o laboratório' : 'Sob sua responsabilidade'}
-                        icon={FolderKanban}
-                      />
-                      <Stat
-                        label="Insumos em alerta"
-                        value={materialsAlert.length}
-                        note="Disponível menor ou igual ao mínimo"
-                        icon={AlertCircle}
-                        warning={materialsAlert.length > 0}
-                      />
-                      <Stat
-                        label="Materiais cadastrados"
-                        value={data.materials.length}
-                        note="Filamentos e resinas"
-                        icon={Package}
-                      />
-                    </div>
-                    <div className="dashboard-grid">
-                      <section className="panel">
-                        <div className="panel-heading">
-                          <div>
-                            <h2>Projetos em movimento</h2>
-                            <p>Uma visão dos seus próximos protótipos.</p>
-                          </div>
-                          <a className="text-link" href="#projects">
-                            Ver projetos <ArrowUpRight size={16} />
-                          </a>
-                        </div>
-                        {data.projects
-                          .filter((p) => p.active)
-                          .slice(0, 5)
-                          .map((p) => (
-                            <div className="project-row" key={p.id}>
-                              <span className="project-icon">
-                                <FolderKanban size={21} />
-                              </span>
-                              <div>
-                                <strong>{p.name}</strong>
-                                <small>{p.owner_name}</small>
-                              </div>
-                              <Badge>Ativo</Badge>
-                            </div>
-                          ))}
-                        {!activeProjects && (
-                          <Empty message="Nenhum projeto ativo. Crie um projeto para começar." />
-                        )}
-                      </section>
-                      <section className="panel">
-                        <div className="panel-heading">
-                          <div>
-                            <h2>Atenção ao estoque</h2>
-                            <p>Insumos ativos abaixo do limite ou zerados.</p>
-                          </div>
-                          <Package size={20} className="muted" />
-                        </div>
-                        {materialsAlert.slice(0, 5).map((m) => (
-                          <a className="stock-row" href="#materials" key={m.id}>
-                            <div>
-                              <strong>{m.name}</strong>
-                              <small>
-                                {Number(m.available) === 0 ? 'Sem estoque' : 'Estoque baixo'}
-                              </small>
-                            </div>
-                            <span>
-                              {number(m.available)} <small>{m.unit}</small>
-                            </span>
-                          </a>
-                        ))}
-                        {!materialsAlert.length && (
-                          <Empty message="Todos os insumos estão acima do limite mínimo." />
-                        )}
-                      </section>
-                    </div>
-                    <section className="next-step">
-                      <span className="project-icon">
-                        <Layers3 size={24} />
-                      </span>
-                      <div>
-                        <h2>A base da sua operação</h2>
-                        <p>
-                          Cadastre pessoas, projetos, impressoras e materiais. Agenda, manutenção e
-                          métricas serão adicionadas nas próximas entregas.
-                        </p>
-                      </div>
-                    </section>
-                  </>
+                  <Dashboard data={data} onBooking={newBooking} />
+                ) : page === 'bookings' ? (
+                  <Bookings records={data.bookings} onCancel={(item) => setModal({ kind: 'cancel-booking', item })} />
+                ) : page === 'maintenance' ? (
+                  <Maintenance records={data.maintenance} />
+                ) : page === 'metrics' ? (
+                  <Metrics data={data.metrics} />
                 ) : (
                   <>
                     <div className="toolbar">
@@ -387,12 +340,166 @@ function Workspace({ user, onLogout }) {
           modal={modal}
           user={user}
           users={data.users}
+          projects={data.projects}
+          equipment={data.equipment}
+          materials={data.materials}
           onClose={() => setModal(null)}
           onSaved={saved}
         />
       )}
     </div>
   );
+}
+function Dashboard({ data }) {
+  const dashboard = data.dashboard || {
+    bookings_today: 0,
+    materials_alert: 0,
+    active_equipment: 0,
+    active_projects: 0,
+    today_bookings: [],
+    stock_alerts: [],
+  };
+  return (
+    <>
+      <div className="stats">
+        <Stat
+          label="Equipamentos ativos"
+          value={dashboard.active_equipment}
+          note={'de ' + data.equipment.length + ' cadastrados'}
+          icon={Printer}
+        />
+        <Stat
+          label="Agendamentos hoje"
+          value={dashboard.bookings_today}
+          note="Agenda do laboratório"
+          icon={CalendarDays}
+        />
+        <Stat
+          label="Insumos em alerta"
+          value={dashboard.materials_alert}
+          note="Disponível menor ou igual ao mínimo"
+          icon={AlertCircle}
+          warning={dashboard.materials_alert > 0}
+        />
+        <Stat
+          label="Projetos ativos"
+          value={dashboard.active_projects}
+          note="Projetos em andamento"
+          icon={FolderKanban}
+        />
+      </div>
+      <div className="dashboard-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Agenda de hoje</h2>
+              <p>Reservas e responsáveis em tempo real.</p>
+            </div>
+            <CalendarDays size={20} className="muted" />
+          </div>
+          {dashboard.today_bookings.map((booking) => (
+            <div className="project-row" key={booking.id}>
+              <span className="project-icon"><CalendarDays size={21} /></span>
+              <div>
+                <strong>{formatTime(booking.started_at)} · {booking.equipment_code}</strong>
+                <small>{booking.user_name} · {booking.project_name}</small>
+              </div>
+              <BookingBadge status={booking.status} />
+            </div>
+          ))}
+          {!dashboard.today_bookings.length && <Empty message="Nenhum agendamento para hoje." />}
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Atenção ao estoque</h2>
+              <p>Insumos ativos abaixo do limite ou zerados.</p>
+            </div>
+            <Package size={20} className="muted" />
+          </div>
+          {dashboard.stock_alerts.map((material) => (
+            <a className="stock-row" href="#materials" key={material.id}>
+              <div>
+                <strong>{material.name}</strong>
+                <small>{Number(material.available) === 0 ? 'Sem estoque' : 'Estoque baixo'}</small>
+              </div>
+              <span>{number(material.available)} <small>{material.unit}</small></span>
+            </a>
+          ))}
+          {!dashboard.stock_alerts.length && <Empty message="Todos os insumos estão acima do limite mínimo." />}
+        </section>
+      </div>
+    </>
+  );
+}
+function Bookings({ records, onCancel }) {
+  if (!records.length) return <section className="panel"><Empty message="Você ainda não possui agendamentos." /></section>;
+  return (
+    <section className="panel table-panel">
+      <div className="table-scroll">
+        <table>
+          <thead><tr><th>Equipamento</th><th>Projeto</th><th>Início</th><th>Duração</th><th>Material</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>{records.map((booking) => (
+            <tr key={booking.id}>
+              <td><strong>{booking.equipment_code}</strong><small>{booking.equipment_model}</small></td>
+              <td>{booking.project_name}</td>
+              <td>{formatDateTime(booking.started_at)}</td>
+              <td>{booking.duration_min} min</td>
+              <td>{number(booking.material_grams)} {booking.material_unit}</td>
+              <td><BookingBadge status={booking.status} /></td>
+              <td>{['scheduled', 'confirmed'].includes(booking.status) && <button className="secondary small-button" onClick={() => onCancel(booking)}>Cancelar</button>}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+function Maintenance({ records }) {
+  if (!records.length) return <section className="panel"><Empty message="Nenhum registro de manutenção encontrado." /></section>;
+  return (
+    <section className="panel table-panel"><div className="table-scroll"><table>
+      <thead><tr><th>Equipamento</th><th>Realização</th><th>Próxima prevista</th><th>Descrição</th><th>Status</th></tr></thead>
+      <tbody>{records.map((item) => <tr key={item.id}>
+        <td><strong>{item.equipment_code}</strong><small>{item.equipment_model}</small></td>
+        <td>{formatDate(item.performed_at)}</td><td>{formatDate(item.next_due)}</td><td>{item.description}</td>
+        <td><Badge tone={item.status === 'overdue' ? 'warning' : 'good'}>{item.status === 'overdue' ? 'Atrasada' : 'Em dia'}</Badge></td>
+      </tr>)}</tbody>
+    </table></div></section>
+  );
+}
+function Metrics({ data }) {
+  if (!data) return <section className="panel"><Empty message="As métricas ainda não foram carregadas." /></section>;
+  return <>
+    <div className="stats">
+      <Stat label="Filamento usado" value={number(data.material_used_kg)} note="kg em agendamentos concluídos" icon={Package} />
+      <Stat label="Agendamentos concluídos" value={data.bookings_done} note="Execuções finalizadas" icon={CalendarDays} />
+      <Stat label="Agendamentos cancelados" value={data.bookings_cancelled} note="Sem consumo efetivo" icon={AlertCircle} />
+      <Stat label="Manutenções" value={data.maintenance_count} note="Registros preventivos" icon={Wrench} />
+    </div>
+    <div className="dashboard-grid metrics-grid">
+      <MetricTable title="Uso de filamento por agendamento" headers={['Projeto', 'Material', 'Gramas']} rows={data.material_by_booking.map((item) => [item.project_name, item.material_name, number(item.material_grams)])} empty="Nenhum consumo FDM concluído." />
+      <MetricTable title="Agendamentos cancelados" headers={['Projeto', 'Motivo', 'Data']} rows={data.cancelled_bookings.map((item) => [item.project_name, item.cancel_reason, formatDateTime(item.cancelled_at)])} empty="Nenhum agendamento cancelado." />
+    </div>
+    <section className="panel table-panel"><div className="panel-heading"><div><h2>Manutenções por equipamento</h2><p>Horas acumuladas em execuções concluídas.</p></div><Wrench size={20} className="muted" /></div><div className="table-scroll"><table><thead><tr><th>Equipamento</th><th>Última</th><th>Próxima</th><th>Horas</th><th>Status</th></tr></thead><tbody>{data.maintenance_by_equipment.map((item) => <tr key={item.id}><td><strong>{item.equipment_code}</strong><small>{item.equipment_model}</small></td><td>{item.performed_at ? formatDate(item.performed_at) : '—'}</td><td>{item.next_due ? formatDate(item.next_due) : '—'}</td><td>{item.hours} h</td><td><Badge tone={item.status === 'overdue' ? 'warning' : 'good'}>{item.status === 'overdue' ? 'Atrasada' : 'Em dia'}</Badge></td></tr>)}</tbody></table></div></section>
+  </>;
+}
+function MetricTable({ title, headers, rows, empty }) {
+  return <section className="panel table-panel"><div className="panel-heading"><h2>{title}</h2></div><div className="table-scroll"><table><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>)}</tbody></table>{!rows.length && <Empty message={empty} />}</div></section>;
+}
+function BookingBadge({ status }) {
+  const labels = { scheduled: 'Agendado', confirmed: 'Confirmado', in_progress: 'Em andamento', done: 'Concluído', cancelled: 'Cancelado', interrupted: 'Interrompido' };
+  const tones = { cancelled: 'warning', interrupted: 'warning', done: 'good' };
+  return <Badge tone={tones[status] || 'neutral'}>{labels[status] || status}</Badge>;
+}
+function formatDate(value) {
+  return value ? new Date(value + (value.length === 10 ? 'T12:00:00' : '')).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+}
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—';
+}
+function formatTime(value) {
+  return value ? new Date(value).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—';
 }
 function Stat({ label, value, note, icon: Icon, warning }) {
   return (

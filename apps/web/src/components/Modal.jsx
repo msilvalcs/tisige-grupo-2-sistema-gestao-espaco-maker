@@ -3,12 +3,19 @@ import { X } from 'lucide-react';
 import { api } from '../lib/api.mjs';
 import { number } from '../lib/format.mjs';
 import { Field, Empty } from './ui.jsx';
-export function Modal({ modal, user, users, onClose, onSaved }) {
+export function Modal({ modal, user, users, projects = [], equipment = [], materials = [], onClose, onSaved }) {
   const { kind, item = {} } = modal;
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [tech, setTech] = useState(item.technology || 'FDM'),
-    [history, setHistory] = useState(null);
+    [history, setHistory] = useState(null),
+    [selectedEquipment, setSelectedEquipment] = useState(item.equipment_id || equipment.find((entry) => entry.active)?.id || ''),
+    [pendingBooking, setPendingBooking] = useState(null);
+  const requestKey = React.useState(() => globalThis.crypto?.randomUUID?.() || String(Date.now()))[0];
+  const selectedEquipmentRecord = equipment.find((entry) => entry.id === selectedEquipment);
+  const compatibleMaterials = materials.filter(
+    (entry) => entry.active && entry.technology === selectedEquipmentRecord?.technology,
+  );
   useEffect(() => {
     if (kind === 'history')
       api('/materials/' + item.id + '/movements')
@@ -32,18 +39,88 @@ export function Modal({ modal, user, users, onClose, onSaved }) {
     equipment: 'equipamento',
     materials: 'insumo',
     users: 'pessoa',
+    booking: 'agendamento',
+    maintenance: 'manutenção',
+    'cancel-booking': 'cancelamento',
   }[kind];
   const heading =
     kind === 'history'
       ? 'Histórico de estoque'
       : kind === 'movement'
         ? 'Movimentar estoque'
-        : (item.id ? 'Editar ' : 'Cadastrar ') + name;
+        : kind === 'cancel-booking'
+          ? 'Cancelar agendamento'
+          : kind === 'booking'
+            ? 'Novo agendamento'
+            : kind === 'maintenance'
+              ? 'Registrar manutenção'
+              : (item.id ? 'Editar ' : 'Cadastrar ') + name;
+  async function saveBooking(values, confirmLowStock = false) {
+    const startedAt = new Date(`${values.start_date}T${values.start_time}`);
+    if (Number.isNaN(startedAt.getTime()) || startedAt <= new Date()) {
+      throw new Error('Informe uma data e hora de início no futuro.');
+    }
+    const payload = {
+      equipment_id: values.equipment_id,
+      material_id: values.material_id,
+      project_id: values.project_id,
+      started_at: startedAt.toISOString(),
+      duration_min: Number(values.duration_min),
+      material_grams: Number(values.material_grams),
+      notes: values.notes || '',
+      confirm_low_stock: confirmLowStock,
+    };
+    const result = await api('/bookings', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': requestKey },
+      body: JSON.stringify(payload),
+    });
+    if (result.requires_confirmation && !confirmLowStock) {
+      setPendingBooking(payload);
+      return;
+    }
+    await onSaved('Agendamento criado com sucesso.');
+  }
+  async function confirmBooking() {
+    setBusy(true);
+    setError('');
+    try {
+      await saveBooking(pendingBooking, true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function submit(event) {
     event.preventDefault();
     setBusy(true);
     setError('');
     const values = Object.fromEntries(new FormData(event.currentTarget));
+    if (kind === 'booking') {
+      try {
+        await saveBooking(values);
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    if (kind === 'cancel-booking') {
+      try {
+        await api('/bookings/' + item.id + '/cancel', {
+          method: 'PATCH',
+          body: JSON.stringify({ reason: values.reason }),
+        });
+        await onSaved('Agendamento cancelado com sucesso.');
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (['projects', 'equipment', 'materials'].includes(kind))
       values.active = values.active === 'on';
     if (kind === 'materials') values.minimum = Number(values.minimum);
@@ -141,6 +218,74 @@ export function Modal({ modal, user, users, onClose, onSaved }) {
           </>
         ) : (
           <form onSubmit={submit}>
+            {kind === 'booking' && (
+              <>
+                <p className="helper">Escolha um equipamento compatível e informe o intervalo da reserva.</p>
+                <div className="equipment-grid">
+                  {equipment.map((entry) => (
+                    <label className={'equipment-card' + (selectedEquipment === entry.id ? ' selected' : '')} key={entry.id}>
+                      <input
+                        type="radio"
+                        name="equipment_id"
+                        value={entry.id}
+                        checked={selectedEquipment === entry.id}
+                        disabled={!entry.active}
+                        onChange={(event) => setSelectedEquipment(event.target.value)}
+                        required
+                      />
+                      <strong>{entry.code}</strong>
+                      <small>{entry.model} · {entry.technology === 'RESIN' ? 'Resina' : 'FDM'}</small>
+                      {!entry.active && <em>Indisponível</em>}
+                    </label>
+                  ))}
+                </div>
+                <Field label="Projeto">
+                  <select name="project_id" required defaultValue={projects.find((project) => project.active)?.id || ''}>
+                    <option value="" disabled>Selecione o projeto</option>
+                    {projects.filter((project) => project.active).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Material">
+                  <select key={selectedEquipment} name="material_id" required defaultValue={compatibleMaterials[0]?.id || ''}>
+                    <option value="" disabled>Selecione o material</option>
+                    {compatibleMaterials.map((material) => <option key={material.id} value={material.id}>{material.name} · {material.unit} · disponível {number(material.available)}</option>)}
+                  </select>
+                </Field>
+                <div className="form-grid two-columns">
+                  <Field label="Data de início"><input type="date" name="start_date" min={new Date().toISOString().slice(0, 10)} required /></Field>
+                  <Field label="Hora de início"><input type="time" name="start_time" required /></Field>
+                </div>
+                <div className="form-grid two-columns">
+                  <Field label="Duração (minutos)"><input type="number" name="duration_min" min="1" max="1440" defaultValue="60" required /></Field>
+                  <Field label="Quantidade estimada (g/ml)"><input type="number" name="material_grams" min="1" max="99999" step="0.001" required /></Field>
+                </div>
+                <Field label="Observações"><textarea name="notes" maxLength={2000} rows={3} /></Field>
+                {pendingBooking && (
+                  <div className="confirmation" role="alertdialog" aria-label="Confirmar saldo insuficiente">
+                    <strong>Saldo insuficiente para esta reserva.</strong>
+                    <p>Ao confirmar, o sistema registrará a reserva mesmo acima do saldo físico atual.</p>
+                    <div className="modal-actions">
+                      <button type="button" className="secondary" onClick={() => setPendingBooking(null)} disabled={busy}>Revisar dados</button>
+                      <button type="button" className="primary" onClick={confirmBooking} disabled={busy}>{busy ? 'Confirmando...' : 'Confirmar mesmo assim'}</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {kind === 'maintenance' && (
+              <>
+                <Field label="Equipamento"><select name="equipment_id" required defaultValue={equipment.find((entry) => entry.active)?.id || ''}><option value="" disabled>Selecione o equipamento</option>{equipment.filter((entry) => entry.active).map((entry) => <option key={entry.id} value={entry.id}>{entry.code} · {entry.model}</option>)}</select></Field>
+                <Field label="Data de realização"><input type="date" name="performed_at" max={new Date().toISOString().slice(0, 10)} required /></Field>
+                <Field label="Descrição"><textarea name="description" minLength={5} maxLength={1000} rows={4} required /></Field>
+                <Field label="Próxima data prevista"><input type="date" name="next_due" min={new Date().toISOString().slice(0, 10)} required /></Field>
+              </>
+            )}
+            {kind === 'cancel-booking' && (
+              <>
+                <p className="muted">{item.equipment_code} · {formatBookingStart(item.started_at)} · {item.project_name}</p>
+                <Field label="Motivo do cancelamento"><textarea name="reason" minLength={5} maxLength={255} rows={4} required /></Field>
+              </>
+            )}
             {kind === 'projects' && (
               <>
                 <Field
@@ -297,6 +442,12 @@ export function Modal({ modal, user, users, onClose, onSaved }) {
               <button className="primary" disabled={busy}>
                 {busy
                   ? 'Salvando...'
+                  : kind === 'booking'
+                    ? 'Criar agendamento'
+                    : kind === 'maintenance'
+                      ? 'Registrar manutenção'
+                      : kind === 'cancel-booking'
+                        ? 'Confirmar cancelamento'
                   : kind === 'movement'
                     ? 'Registrar movimentação'
                     : 'Salvar cadastro'}
@@ -307,4 +458,13 @@ export function Modal({ modal, user, users, onClose, onSaved }) {
       </section>
     </div>
   );
+}
+function formatBookingStart(value) {
+  return value
+    ? new Date(value).toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
+    : '—';
 }

@@ -610,6 +610,65 @@ td small {
   font-size: 12px;
   font-weight: 500;
 }
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 20px;
+}
+.equipment-card {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #dce2eb;
+  border-radius: 9px;
+  padding: 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.equipment-card.selected {
+  border-color: #5367d9;
+  background: #f3f5ff;
+  box-shadow: 0 0 0 2px #5367d922;
+}
+.equipment-card input {
+  width: 16px;
+  accent-color: #5367d9;
+}
+.equipment-card small,
+.equipment-card em {
+  color: #6c7a91;
+  font-size: 10px;
+  font-style: normal;
+}
+.confirmation {
+  border: 1px solid #f0d4a7;
+  background: #fff8eb;
+  color: #79521a;
+  border-radius: 8px;
+  padding: 13px;
+  margin-top: 12px;
+}
+.confirmation p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 5px;
+}
+.confirmation .modal-actions {
+  border-top: 0;
+  padding-top: 10px;
+  margin-top: 0;
+}
+.small-button {
+  padding: 7px 9px;
+  font-size: 11px;
+}
 input,
 textarea,
 select {
@@ -988,6 +1047,10 @@ input::placeholder {
   }
   .modal {
     padding: 20px;
+  }
+  .two-columns,
+  .equipment-grid {
+    grid-template-columns: 1fr;
   }
   .modal-heading h2 {
     font-size: 18px;
