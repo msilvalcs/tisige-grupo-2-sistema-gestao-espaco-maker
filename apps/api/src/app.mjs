@@ -62,6 +62,17 @@ const transitionBookingSchema = z.object({
   actual_material_grams: z.number().finite().min(0).max(99999).multipleOf(0.001).optional(),
   reason: z.string().trim().min(5).max(255).optional(),
 });
+const maintenanceSchema = z
+  .object({
+    equipment_id: identifier,
+    performed_at: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida.'),
+    description: z.string().trim().min(5).max(1000),
+    next_due: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida.'),
+  })
+  .refine((input) => input.next_due > input.performed_at, {
+    path: ['next_due'],
+    message: 'A próxima manutenção deve ser posterior à realização.',
+  });
 export const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
@@ -335,6 +346,47 @@ app.post('/api/materials/:id/movements', manager, async (req, res) => {
     ).rows[0];
   });
   res.status(201).json(movement);
+});
+app.get('/api/maintenance', async (_req, res) => {
+  res.json(
+    (
+      await pool.query(
+        `SELECT ml.*,e.code AS equipment_code,e.model AS equipment_model,
+                u.name AS created_by_name,
+                CASE WHEN ml.next_due < CURRENT_DATE THEN 'overdue' ELSE 'ok' END AS status
+         FROM maintenance_logs ml
+         JOIN equipment e ON e.id=ml.equipment_id
+         JOIN users u ON u.id=ml.created_by
+         ORDER BY ml.performed_at DESC,ml.id DESC`,
+      )
+    ).rows,
+  );
+});
+app.post('/api/maintenance', manager, async (req, res) => {
+  const input = maintenanceSchema.parse(req.body);
+  if (input.performed_at > new Date().toISOString().slice(0, 10))
+    throw fail(400, 'A data de realização não pode estar no futuro.');
+  const {
+    rows: [maintenance],
+  } = await transaction(async (client) => {
+    const {
+      rows: [equipment],
+    } = await client.query('SELECT id FROM equipment WHERE id=$1', [input.equipment_id]);
+    if (!equipment) throw fail(404, 'Equipamento não encontrado.');
+    return client.query(
+      `INSERT INTO maintenance_logs(equipment_id,performed_at,description,next_due,created_by)
+       VALUES ($1,$2,$3,$4,$5)
+       RETURNING id,equipment_id,performed_at,description,next_due,created_by,created_at`,
+      [
+        input.equipment_id,
+        input.performed_at,
+        input.description,
+        input.next_due,
+        req.user.id,
+      ],
+    );
+  });
+  res.status(201).json({ ...maintenance, status: input.next_due < new Date().toISOString().slice(0, 10) ? 'overdue' : 'ok' });
 });
 const bookingSelect = `
   SELECT b.*, u.name AS user_name, e.code AS equipment_code, e.model AS equipment_model,
