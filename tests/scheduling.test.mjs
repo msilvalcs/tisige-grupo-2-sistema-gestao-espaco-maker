@@ -188,7 +188,7 @@ test('concorrência pelo mesmo equipamento aceita apenas uma reserva', async () 
   assert.deepEqual(results.map((result) => result.status).sort(), [201, 409]);
 });
 
-test('saldo insuficiente exige confirmação explícita e cancelamento devolve reserva', async () => {
+test('saldo insuficiente impede reserva e cancelamento libera material', async () => {
   const body = {
     equipment_id: equipment.id,
     material_id: lowStock.id,
@@ -198,11 +198,13 @@ test('saldo insuficiente exige confirmação explícita e cancelamento devolve r
     material_grams: 20,
   };
   const warning = await call('/bookings', { method: 'POST', body, session: userCookie, headers: { 'Idempotency-Key': 'low-stock-1' } });
-  assert.equal(warning.status, 200);
-  assert.equal(warning.data.requires_confirmation, true);
+  assert.equal(warning.status, 409);
+  assert.match(warning.data.message, /Saldo disponível insuficiente/);
+  const before = (await call('/materials')).data.find((entry) => entry.id === lowStock.id);
+  assert.equal(Number(before.reserved), 0);
   const created = await call('/bookings', {
     method: 'POST',
-    body: { ...body, confirm_low_stock: true },
+    body: { ...body, material_id: material.id },
     session: userCookie,
     headers: { 'Idempotency-Key': 'low-stock-1' },
   });
@@ -217,6 +219,7 @@ test('saldo insuficiente exige confirmação explícita e cancelamento devolve r
 });
 
 test('ciclo de execução registra consumo real e impede cancelamento inválido', async () => {
+  const before = (await call('/materials')).data.find((entry) => entry.id === material.id);
   const created = await call('/bookings', {
     method: 'POST',
     session: userCookie,
@@ -232,6 +235,9 @@ test('ciclo de execução registra consumo real e impede cancelamento inválido'
   assert.equal(created.status, 201);
   assert.equal((await call('/bookings/' + created.data.id + '/status', { method: 'PATCH', session: userCookie, body: { status: 'confirmed' } })).status, 200);
   assert.equal((await call('/bookings/' + created.data.id + '/status', { method: 'PATCH', session: userCookie, body: { status: 'in_progress' } })).status, 200);
+  const started = (await call('/materials')).data.find((entry) => entry.id === material.id);
+  assert.equal(Number(started.physical), Number(before.physical) - 40);
+  assert.equal(Number(started.reserved), Number(before.reserved));
   const done = await call('/bookings/' + created.data.id + '/status', {
     method: 'PATCH',
     session: userCookie,
@@ -239,7 +245,29 @@ test('ciclo de execução registra consumo real e impede cancelamento inválido'
   });
   assert.equal(done.status, 200);
   assert.equal(done.data.status, 'done');
+  const finished = (await call('/materials')).data.find((entry) => entry.id === material.id);
+  assert.equal(Number(finished.physical), Number(before.physical) - 30);
   assert.equal((await call('/bookings/' + created.data.id + '/cancel', { method: 'PATCH', session: userCookie, body: { reason: 'Não deve funcionar' } })).status, 409);
+});
+
+test('manutenção programada bloqueia reservas sobrepostas e pode ser concluída', async () => {
+  const startsAt = future(1600);
+  const endsAt = future(1660);
+  const scheduled = await call('/maintenance/windows', {
+    method: 'POST',
+    body: { equipment_id: equipment.id, starts_at: startsAt, ends_at: endsAt,
+      kind: 'preventive', description: 'Limpeza preventiva do equipamento', responsible: 'Gestor Maker' },
+  });
+  assert.equal(scheduled.status, 201);
+  const conflict = await call('/bookings', { method: 'POST', session: userCookie,
+    body: { equipment_id: equipment.id, material_id: material.id, project_id: project.id,
+      started_at: future(1620), duration_min: 20, material_grams: 10 } });
+  assert.equal(conflict.status, 409);
+  assert.match(conflict.data.message, /manutenção/);
+  assert.equal((await call('/maintenance/windows/' + scheduled.data.id + '/status', {
+    method: 'PATCH', body: { status: 'in_progress' } })).status, 200);
+  assert.equal((await call('/maintenance/windows/' + scheduled.data.id + '/status', {
+    method: 'PATCH', body: { status: 'done' } })).status, 200);
 });
 
 test('manutenção, dashboard e métricas mantêm contratos e permissões', async () => {
@@ -278,4 +306,9 @@ test('manutenção, dashboard e métricas mantêm contratos e permissões', asyn
   assert.ok(Number(metrics.data.bookings_cancelled) >= 1);
   assert.ok(Number(metrics.data.maintenance_count) >= 1);
   assert.ok(metrics.data.maintenance_by_equipment.some((entry) => entry.equipment_code === equipment.code));
+  assert.ok(Array.isArray(metrics.data.material_by_project));
+  const oldPeriod = await call('/metrics?from=2020-01-01&to=2020-01-02');
+  assert.equal(oldPeriod.status, 200);
+  assert.equal(Number(oldPeriod.data.bookings_done), 0);
+  assert.equal(oldPeriod.data.material_by_project.length, 0);
 });

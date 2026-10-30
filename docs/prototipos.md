@@ -1,48 +1,15 @@
-# Protótipos de Telas do Sistema (SIGES)
+# Protótipos atualizados do SIGES
 
-Apresentam-se a seguir os protótipos de interface desenvolvidos para o Sistema Integrado de Gestão do Espaço Maker (SIGES), contemplando a visão geral (dashboard), agendamento de máquinas, monitoramento de equipamentos, controle de estoque de insumos e análise de métricas operacionais de impressão 3D.
+As referências de interface ficam em [`Tela/`](./Tela/). A implementação usa dados do PostgreSQL, portanto nomes, quantidades e datas variam conforme os registros da unidade.
 
----
+| Módulo | Tela principal | Estados e fluxos |
+| --- | --- | --- |
+| Dashboard | [dashboard.png](./Tela/dashboard.png) | [offline.png](./Tela/offline.png) |
+| Agendamentos | [agenda.png](./Tela/agenda.png) | [booking.png](./Tela/booking.png), [review.png](./Tela/review.png), [success.png](./Tela/success.png), [cancel.png](./Tela/cancel.png), [execution.png](./Tela/execution.png), [interruption.png](./Tela/interruption.png) |
+| Projetos | [projects.png](./Tela/projects.png) | [project-new.png](./Tela/project-new.png), [project-done.png](./Tela/project-done.png) |
+| Equipamentos | [equipment.png](./Tela/equipment.png) | [equipment-new.png](./Tela/equipment-new.png), [equipment-edit.png](./Tela/equipment-edit.png) |
+| Insumos | [supplies.png](./Tela/supplies.png) | [supplies-new.png](./Tela/supplies-new.png), [stock.png](./Tela/stock.png), [history.png](./Tela/history.png) |
+| Manutenção | [maintenance.png](./Tela/maintenance.png) | [maintenance-new.png](./Tela/maintenance-new.png), [maintenance-finished.png](./Tela/maintenance-finished.png) |
+| Métricas | [metrics.png](./Tela/metrics.png) | Consumo efetivo de filamento e resina por projeto. |
 
-### Dashboard (Visão Geral)
-
-<p align="center">
-  <img src="./images/SIGES - Dashboard MVP.png" alt="Dashboard do Sistema"> <br>
-  Figura 1: Dashboard do Sistema (Fonte: próprio autor)
-</p>
-
----
-
-### Módulo de Agendamentos
-
-<p align="center">
-  <img src="./images/SIGES - Agendamentos.png" alt="Painel de Agendamentos"> <br>
-  Figura 2: Gestão de Agendamentos (Fonte: próprio autor)
-</p>
-
----
-
-### Módulo de Equipamentos
-
-<p align="center">
-  <img src="./images/SIGES - Equipamentos.png" alt="Gestão de Equipamentos"> <br>
-  Figura 3: Gestão e Monitoramento de Equipamentos (Fonte: próprio autor)
-</p>
-
----
-
-### Módulo de Insumos
-
-<p align="center">
-  <img src="./images/SIGES-insumos.png" alt="Controle de Insumos"> <br>
-  Figura 4: Controle de Insumos e Estoque (Fonte: próprio autor)
-</p>
-
----
-
-### Métricas de Impressão
-
-<p align="center">
-  <img src="./images/siges-metricas-impressao.png" alt="Métricas de Impressão"> <br>
-  Figura 5: Métricas e Relatórios de Impressão (Fonte: próprio autor)
-</p>
+Os demais PNGs da pasta mostram variações de material, saldo, confirmação e encerramento dos mesmos fluxos.
