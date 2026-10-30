@@ -6,3 +6,4 @@ test-results/
 graphify-out/
 *.log
 .local/
+.idea/
