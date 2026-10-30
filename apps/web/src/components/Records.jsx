@@ -49,13 +49,29 @@ export function Records({ page, records, manager, onEdit, onMove, onHistory }) {
                 </>
               ) : page === 'equipment' ? (
                 <>
+                  <td>{row.code}</td>
                   <td>
-                    {row.code}
+                    {technology(row.technology)} · {row.location}
                   </td>
-                  <td>{technology(row.technology)} · {row.location}</td>
                   <td>
-                    <Badge tone={!row.active ? 'neutral' : row.condition_now === 'maintenance' ? 'warning' : row.condition_now === 'printing' ? 'neutral' : 'good'}>
-                      {!row.active ? 'Inativo' : row.condition_now === 'maintenance' ? 'Manutenção' : row.condition_now === 'printing' ? 'Imprimindo' : 'Livre'}
+                    <Badge
+                      tone={
+                        !row.active
+                          ? 'neutral'
+                          : row.condition_now === 'maintenance'
+                            ? 'warning'
+                            : row.condition_now === 'printing'
+                              ? 'neutral'
+                              : 'good'
+                      }
+                    >
+                      {!row.active
+                        ? 'Inativo'
+                        : row.condition_now === 'maintenance'
+                          ? 'Manutenção'
+                          : row.condition_now === 'printing'
+                            ? 'Imprimindo'
+                            : 'Livre'}
                     </Badge>
                   </td>
                   <td>{row.model}</td>
@@ -76,26 +92,23 @@ export function Records({ page, records, manager, onEdit, onMove, onHistory }) {
                   <td>
                     {row.name} · {row.unit}
                   </td>
-                  <td>
-                    {number(row.physical)}
-                  </td>
-                  <td>
-                    {number(row.reserved)}
-                  </td>
-                  <td>
-                    {number(row.available)}
-                  </td>
+                  <td>{number(row.physical)}</td>
+                  <td>{number(row.reserved)}</td>
+                  <td>{number(row.available)}</td>
                   <td>
                     <Badge
                       tone={
                         !row.active
                           ? 'neutral'
-                          : Number(row.available) === 0 ? 'danger' : Number(row.available) <= Number(row.minimum)
-                            ? 'warning'
-                            : 'good'
+                          : Number(row.available) === 0
+                            ? 'danger'
+                            : Number(row.available) <= Number(row.minimum)
+                              ? 'warning'
+                              : 'good'
                       }
                     >
-                      Mín. {number(row.minimum)} · {!row.active
+                      Mín. {number(row.minimum)} ·{' '}
+                      {!row.active
                         ? 'Inativo'
                         : Number(row.available) === 0
                           ? 'Zerado'

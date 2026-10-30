@@ -46,14 +46,20 @@ const bookingSchema = z.object({
   equipment_id: identifier,
   material_id: identifier,
   project_id: identifier,
-  started_at: z.string().trim().refine((value) => !Number.isNaN(Date.parse(value)), 'Informe uma data válida.'),
+  started_at: z
+    .string()
+    .trim()
+    .refine((value) => !Number.isNaN(Date.parse(value)), 'Informe uma data válida.'),
   duration_min: z.number().int().min(1).max(1440),
   material_grams: z.number().finite().min(1).max(99999).multipleOf(0.001),
   notes: z.string().trim().max(2000).default(''),
 });
 const cancelBookingSchema = z.object({ reason: z.string().trim().min(5).max(255) });
 const rescheduleBookingSchema = z.object({
-  started_at: z.string().trim().refine((value) => !Number.isNaN(Date.parse(value)), 'Informe uma data válida.'),
+  started_at: z
+    .string()
+    .trim()
+    .refine((value) => !Number.isNaN(Date.parse(value)), 'Informe uma data válida.'),
   duration_min: z.number().int().min(1).max(1440),
 });
 const transitionBookingSchema = z.object({
@@ -64,9 +70,15 @@ const transitionBookingSchema = z.object({
 const maintenanceSchema = z
   .object({
     equipment_id: identifier,
-    performed_at: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida.'),
+    performed_at: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida.'),
     description: z.string().trim().min(5).max(1000),
-    next_due: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida.'),
+    next_due: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe uma data válida.'),
   })
   .refine((input) => input.next_due > input.performed_at, {
     path: ['next_due'],
@@ -86,9 +98,14 @@ app.use(helmet());
 app.use(express.json({ limit: '32kb' }));
 app.use(
   '/api',
-  rateLimit({ windowMs: 60000, limit: 500, skip: () => !config.production,
-    standardHeaders: 'draft-8', legacyHeaders: false,
-    message: { message: 'Muitas solicitações. Tente novamente em instantes.' } }),
+  rateLimit({
+    windowMs: 60000,
+    limit: 500,
+    skip: () => !config.production,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { message: 'Muitas solicitações. Tente novamente em instantes.' },
+  }),
 );
 app.use('/api', (req, res, next) => {
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.get('X-SIGES-Request') !== '1')
@@ -253,11 +270,15 @@ async function saveProject(req, res) {
 app.post('/api/projects', saveProject);
 app.put('/api/projects/:id', saveProject);
 app.get('/api/equipment', async (_req, res) =>
-  res.json((await pool.query(`SELECT e.*,
+  res.json(
+    (
+      await pool.query(`SELECT e.*,
     CASE WHEN EXISTS (SELECT 1 FROM maintenance_windows w WHERE w.equipment_id=e.id AND w.status <> 'done' AND now() >= w.starts_at AND now() < w.ends_at) THEN 'maintenance'
          WHEN EXISTS (SELECT 1 FROM bookings b WHERE b.equipment_id=e.id AND b.status='in_progress') THEN 'printing'
          ELSE 'free' END AS condition_now
-    FROM equipment e ORDER BY e.code`)).rows),
+    FROM equipment e ORDER BY e.code`)
+    ).rows,
+  ),
 );
 async function saveEquipment(req, res) {
   const input = equipmentSchema.parse(req.body);
@@ -390,53 +411,75 @@ app.post('/api/maintenance', manager, async (req, res) => {
       `INSERT INTO maintenance_logs(equipment_id,performed_at,description,next_due,created_by)
        VALUES ($1,$2,$3,$4,$5)
        RETURNING id,equipment_id,performed_at,description,next_due,created_by,created_at`,
-      [
-        input.equipment_id,
-        input.performed_at,
-        input.description,
-        input.next_due,
-        req.user.id,
-      ],
+      [input.equipment_id, input.performed_at, input.description, input.next_due, req.user.id],
     );
   });
-  res.status(201).json({ ...maintenance, status: input.next_due < new Date().toISOString().slice(0, 10) ? 'overdue' : 'ok' });
+  res.status(201).json({
+    ...maintenance,
+    status: input.next_due < new Date().toISOString().slice(0, 10) ? 'overdue' : 'ok',
+  });
 });
 const maintenanceWindowSelect = `SELECT w.*,e.code AS equipment_code,e.model AS equipment_model
   FROM maintenance_windows w JOIN equipment e ON e.id=w.equipment_id`;
 app.get('/api/maintenance/windows', async (_req, res) => {
-  res.json((await pool.query(`${maintenanceWindowSelect} ORDER BY w.starts_at DESC,w.id DESC`)).rows);
+  res.json(
+    (await pool.query(`${maintenanceWindowSelect} ORDER BY w.starts_at DESC,w.id DESC`)).rows,
+  );
 });
 app.post('/api/maintenance/windows', manager, async (req, res) => {
   const input = maintenanceWindowSchema.parse(req.body);
-  const start = new Date(input.starts_at), end = new Date(input.ends_at);
+  const start = new Date(input.starts_at),
+    end = new Date(input.ends_at);
   if (start <= new Date() || end <= start) throw fail(400, 'Informe um intervalo futuro válido.');
   const id = await transaction(async (client) => {
-    const equipment = await client.query('SELECT id,active FROM equipment WHERE id=$1 FOR UPDATE', [input.equipment_id]);
+    const equipment = await client.query('SELECT id,active FROM equipment WHERE id=$1 FOR UPDATE', [
+      input.equipment_id,
+    ]);
     if (!equipment.rowCount) throw fail(404, 'Equipamento não encontrado.');
     if (!equipment.rows[0].active) throw fail(409, 'Equipamento inativo.');
-    const bookings = await client.query(`SELECT 1 FROM bookings WHERE equipment_id=$1
+    const bookings = await client.query(
+      `SELECT 1 FROM bookings WHERE equipment_id=$1
       AND status IN ('scheduled','confirmed','in_progress')
       AND started_at < $3 AND started_at + duration_min * interval '1 minute' > $2 LIMIT 1`,
-      [input.equipment_id, start, end]);
+      [input.equipment_id, start, end],
+    );
     if (bookings.rowCount) throw fail(409, 'Já existe uma reserva neste intervalo.');
-    const windows = await client.query(`SELECT 1 FROM maintenance_windows WHERE equipment_id=$1
-      AND status <> 'done' AND starts_at < $3 AND ends_at > $2 LIMIT 1`, [input.equipment_id, start, end]);
+    const windows = await client.query(
+      `SELECT 1 FROM maintenance_windows WHERE equipment_id=$1
+      AND status <> 'done' AND starts_at < $3 AND ends_at > $2 LIMIT 1`,
+      [input.equipment_id, start, end],
+    );
     if (windows.rowCount) throw fail(409, 'Já existe uma manutenção neste intervalo.');
-    const created = await client.query(`INSERT INTO maintenance_windows
+    const created = await client.query(
+      `INSERT INTO maintenance_windows
       (equipment_id,starts_at,ends_at,kind,description,responsible,created_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [input.equipment_id, start, end, input.kind, input.description, input.responsible, req.user.id]);
+      [
+        input.equipment_id,
+        start,
+        end,
+        input.kind,
+        input.description,
+        input.responsible,
+        req.user.id,
+      ],
+    );
     return created.rows[0].id;
   });
-  res.status(201).json((await pool.query(`${maintenanceWindowSelect} WHERE w.id=$1`, [id])).rows[0]);
+  res
+    .status(201)
+    .json((await pool.query(`${maintenanceWindowSelect} WHERE w.id=$1`, [id])).rows[0]);
 });
 app.patch('/api/maintenance/windows/:id/status', manager, async (req, res) => {
   const id = identifier.parse(req.params.id);
   const { status } = z.object({ status: z.enum(['in_progress', 'done']) }).parse(req.body);
-  const updated = await pool.query(`UPDATE maintenance_windows SET status=$1,
+  const updated = await pool.query(
+    `UPDATE maintenance_windows SET status=$1,
     finished_at=CASE WHEN $1='done' THEN now() ELSE NULL END
     WHERE id=$2 AND (($1='in_progress' AND status='scheduled') OR ($1='done' AND status IN ('scheduled','in_progress')))
-    RETURNING id`, [status, id]);
+    RETURNING id`,
+    [status, id],
+  );
   if (!updated.rowCount) throw fail(409, 'Manutenção não encontrada ou transição inválida.');
   res.json((await pool.query(`${maintenanceWindowSelect} WHERE w.id=$1`, [id])).rows[0]);
 });
@@ -493,10 +536,18 @@ app.get('/api/dashboard', async (req, res) => {
   });
 });
 app.get('/api/metrics', manager, async (req, res) => {
-  const range = z.object({
-    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  }).parse(req.query);
+  const range = z
+    .object({
+      from: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+      to: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+    })
+    .parse(req.query);
   if (Boolean(range.from) !== Boolean(range.to) || (range.from && range.from > range.to))
     throw fail(400, 'Informe um período válido.');
   const period = range.from
@@ -506,7 +557,14 @@ app.get('/api/metrics', manager, async (req, res) => {
     ? ` AND b.cancelled_at >= $1::date AND b.cancelled_at < $2::date + interval '1 day'`
     : '';
   const params = range.from ? [range.from, range.to] : [];
-  const [summary, materialByBooking, cancelledBookings, maintenanceByEquipment, materialByProject, cancelledCount] = await Promise.all([
+  const [
+    summary,
+    materialByBooking,
+    cancelledBookings,
+    maintenanceByEquipment,
+    materialByProject,
+    cancelledCount,
+  ] = await Promise.all([
     pool.query(
       `SELECT
          ROUND(COALESCE(SUM(CASE WHEN b.status IN ('done','interrupted') AND m.technology='FDM' THEN b.actual_material_grams ELSE 0 END),0) / 1000, 2) AS material_used_kg,
@@ -559,7 +617,10 @@ app.get('/api/metrics', manager, async (req, res) => {
        GROUP BY p.id,p.name ORDER BY p.name`,
       params,
     ),
-    pool.query(`SELECT count(*) FROM bookings b WHERE b.status='cancelled' ${cancelledPeriod}`, params),
+    pool.query(
+      `SELECT count(*) FROM bookings b WHERE b.status='cancelled' ${cancelledPeriod}`,
+      params,
+    ),
   ]);
   const data = summary.rows[0];
   res.json({
@@ -654,10 +715,13 @@ app.post('/api/bookings', async (req, res) => {
        LIMIT 1`,
       [input.equipment_id, startedAt.toISOString(), endedAt.toISOString()],
     );
-    if (conflict.rowCount) throw fail(409, 'Já existe um agendamento que conflita com este horário.');
-    const maintenanceConflict = await client.query(`SELECT 1 FROM maintenance_windows
+    if (conflict.rowCount)
+      throw fail(409, 'Já existe um agendamento que conflita com este horário.');
+    const maintenanceConflict = await client.query(
+      `SELECT 1 FROM maintenance_windows
       WHERE equipment_id=$1 AND status <> 'done' AND starts_at < $3 AND ends_at > $2 LIMIT 1`,
-    [input.equipment_id, startedAt.toISOString(), endedAt.toISOString()]);
+      [input.equipment_id, startedAt.toISOString(), endedAt.toISOString()],
+    );
     if (maintenanceConflict.rowCount) throw fail(409, 'Equipamento em manutenção neste intervalo.');
     if (Number(material.reserved) + input.material_grams > Number(material.physical))
       throw fail(409, 'Saldo disponível insuficiente para esta reserva.');
@@ -716,7 +780,8 @@ app.patch('/api/bookings/:id/cancel', async (req, res) => {
       'UPDATE materials SET reserved=reserved-$1 WHERE id=$2 AND reserved >= $1 RETURNING physical',
       [current.material_grams, current.material_id],
     );
-    if (!material) throw fail(409, 'A reserva de estoque já foi alterada; recarregue o agendamento.');
+    if (!material)
+      throw fail(409, 'A reserva de estoque já foi alterada; recarregue o agendamento.');
     await client.query(
       `INSERT INTO stock_movements(material_id,author_id,quantity,resulting_balance,reason)
        VALUES ($1,$2,$3,$4,$5)`,
@@ -761,10 +826,13 @@ app.patch('/api/bookings/:id/reschedule', async (req, res) => {
        LIMIT 1`,
       [id, current.equipment_id, startedAt.toISOString(), endedAt.toISOString()],
     );
-    if (conflict.rowCount) throw fail(409, 'Já existe um agendamento que conflita com este horário.');
-    const maintenanceConflict = await client.query(`SELECT 1 FROM maintenance_windows
+    if (conflict.rowCount)
+      throw fail(409, 'Já existe um agendamento que conflita com este horário.');
+    const maintenanceConflict = await client.query(
+      `SELECT 1 FROM maintenance_windows
       WHERE equipment_id=$1 AND status <> 'done' AND starts_at < $3 AND ends_at > $2 LIMIT 1`,
-    [current.equipment_id, startedAt.toISOString(), endedAt.toISOString()]);
+      [current.equipment_id, startedAt.toISOString(), endedAt.toISOString()],
+    );
     if (maintenanceConflict.rowCount) throw fail(409, 'Equipamento em manutenção neste intervalo.');
     return (
       await client.query(
@@ -795,13 +863,24 @@ app.patch('/api/bookings/:id/status', async (req, res) => {
     if (input.status === 'interrupted' && !input.reason)
       throw fail(400, 'Informe o motivo da interrupção.');
     if (input.status === 'in_progress') {
-      const material = await client.query(`UPDATE materials SET physical=physical-$1,reserved=reserved-$1
+      const material = await client.query(
+        `UPDATE materials SET physical=physical-$1,reserved=reserved-$1
         WHERE id=$2 AND physical >= $1 AND reserved >= $1 RETURNING physical`,
-      [current.material_grams, current.material_id]);
-      if (!material.rowCount) throw fail(409, 'Saldo físico insuficiente para iniciar a impressão.');
-      await client.query(`INSERT INTO stock_movements(material_id,author_id,quantity,resulting_balance,reason)
+        [current.material_grams, current.material_id],
+      );
+      if (!material.rowCount)
+        throw fail(409, 'Saldo físico insuficiente para iniciar a impressão.');
+      await client.query(
+        `INSERT INTO stock_movements(material_id,author_id,quantity,resulting_balance,reason)
         VALUES ($1,$2,$3,$4,$5)`,
-      [current.material_id, req.user.id, -current.material_grams, material.rows[0].physical, `Baixa estimada - booking ${id}`]);
+        [
+          current.material_id,
+          req.user.id,
+          -current.material_grams,
+          material.rows[0].physical,
+          `Baixa estimada - booking ${id}`,
+        ],
+      );
     }
     if (!['done', 'interrupted'].includes(input.status))
       return (

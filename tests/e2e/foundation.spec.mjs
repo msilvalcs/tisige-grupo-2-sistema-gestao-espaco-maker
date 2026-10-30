@@ -6,7 +6,9 @@ async function login(page, email = 'gestor@siges.local') {
   await page.getByLabel('E-mail institucional').fill(email);
   await page.getByLabel('Senha', { exact: true }).fill(process.env.SEED_PASSWORD);
   await page.getByRole('button', { name: 'Entrar no SIGES' }).click();
-  await expect(page.getByRole('heading', { name: /(?:Bom dia|Boa tarde|Boa noite),/ })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /(?:Bom dia|Boa tarde|Boa noite),/ }),
+  ).toBeVisible();
 }
 
 test('entradas válidas repetidas não bloqueiam o usuário', async ({ page }) => {
@@ -97,7 +99,9 @@ test('insumo, movimentação, saldo persistido e histórico', async ({ page }) =
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.reload();
   await page.getByRole('textbox', { name: 'Buscar registros' }).fill(name);
-  await expect(page.getByRole('row').filter({ hasText: name }).getByRole('cell').nth(1)).toHaveText('125,5');
+  await expect(page.getByRole('row').filter({ hasText: name }).getByRole('cell').nth(1)).toHaveText(
+    '125,5',
+  );
   await page.getByRole('button', { name: 'Histórico de ' + name, exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Reposição para validação E2E');
   await expect(page.getByRole('dialog')).toContainText('Gestor Maker');
@@ -111,7 +115,9 @@ test('insumo, movimentação, saldo persistido e histórico', async ({ page }) =
 test('usuário comum tem interface limitada e API nega alteração', async ({ page }) => {
   await login(page, 'ana@siges.local');
   await page.getByRole('link', { name: 'Equipamentos', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Gestão de equipamentos', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Gestão de equipamentos', exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Novo equipamento' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Pessoas', exact: true })).toHaveCount(0);
   const denied = await page.request.post('/api/equipment', {
@@ -124,12 +130,24 @@ test('usuário comum tem interface limitada e API nega alteração', async ({ pa
 test('reserva é revisada antes da confirmação e impressão pode ser encerrada', async ({ page }) => {
   await login(page);
   const code = 'BOOK-' + Date.now();
-  const equipment = await page.request.post('/api/equipment', { headers: { 'X-SIGES-Request': '1' }, data: { code, model: 'Impressora de teste', technology: 'FDM', location: 'Sala de testes', active: true } });
+  const equipment = await page.request.post('/api/equipment', {
+    headers: { 'X-SIGES-Request': '1' },
+    data: {
+      code,
+      model: 'Impressora de teste',
+      technology: 'FDM',
+      location: 'Sala de testes',
+      active: true,
+    },
+  });
   expect(equipment.status()).toBe(201);
   await page.reload();
   await page.getByRole('button', { name: 'Novo agendamento' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('dialog').locator('select[name="equipment_id"]').selectOption({ label: `${code} · Sala de testes` });
+  await page
+    .getByRole('dialog')
+    .locator('select[name="equipment_id"]')
+    .selectOption({ label: `${code} · Sala de testes` });
   const day = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await page.getByLabel('Data de início').fill(day);
   await page.getByLabel('Hora de início').fill('14:00');
@@ -152,12 +170,24 @@ test('reserva é revisada antes da confirmação e impressão pode ser encerrada
 test('programação de manutenção aparece na lista', async ({ page }) => {
   await login(page);
   const code = 'MAINT-' + Date.now();
-  const equipment = await page.request.post('/api/equipment', { headers: { 'X-SIGES-Request': '1' }, data: { code, model: 'Impressora de teste', technology: 'FDM', location: 'Sala de testes', active: true } });
+  const equipment = await page.request.post('/api/equipment', {
+    headers: { 'X-SIGES-Request': '1' },
+    data: {
+      code,
+      model: 'Impressora de teste',
+      technology: 'FDM',
+      location: 'Sala de testes',
+      active: true,
+    },
+  });
   expect(equipment.status()).toBe(201);
   await page.reload();
   await page.getByRole('link', { name: 'Manutenção' }).click();
   await page.getByRole('button', { name: 'Programar manutenção' }).click();
-  await page.getByRole('dialog').locator('select[name="equipment_id"]').selectOption({ label: `${code} · Impressora de teste` });
+  await page
+    .getByRole('dialog')
+    .locator('select[name="equipment_id"]')
+    .selectOption({ label: `${code} · Impressora de teste` });
   const day = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await page.getByLabel('Data', { exact: true }).fill(day);
   await page.getByLabel('Início').fill('09:00');
@@ -165,5 +195,7 @@ test('programação de manutenção aparece na lista', async ({ page }) => {
   await page.getByLabel('Serviço / motivo').fill('Limpeza preventiva do equipamento');
   await page.getByRole('button', { name: 'Confirmar programação' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('row').filter({ hasText: 'Limpeza preventiva do equipamento' }).first()).toBeVisible();
+  await expect(
+    page.getByRole('row').filter({ hasText: 'Limpeza preventiva do equipamento' }).first(),
+  ).toBeVisible();
 });

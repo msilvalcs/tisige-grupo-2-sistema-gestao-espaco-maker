@@ -6,7 +6,8 @@ import { randomUUID } from 'node:crypto';
 
 dotenv.config({ quiet: true });
 const originalUrl = process.env.DATABASE_URL;
-if (!originalUrl) throw new Error('Configure DATABASE_URL para executar testes com PostgreSQL real.');
+if (!originalUrl)
+  throw new Error('Configure DATABASE_URL para executar testes com PostgreSQL real.');
 const databaseName = 'siges_scheduling_' + randomUUID().replaceAll('-', '');
 const admin = new pg.Client({ connectionString: originalUrl });
 let server, pool, base, managerCookie, userCookie, project, equipment, material, lowStock;
@@ -150,7 +151,13 @@ test('rejeita conflito, passado, tecnologia incompatível e equipamento inativo'
   assert.equal(incompatible.status, 400);
   const inactive = await call('/equipment/' + equipment.id, {
     method: 'PUT',
-    body: { code: equipment.code, model: equipment.model, technology: equipment.technology, location: equipment.location, active: false },
+    body: {
+      code: equipment.code,
+      model: equipment.model,
+      technology: equipment.technology,
+      location: equipment.location,
+      active: false,
+    },
   });
   assert.equal(inactive.status, 200);
   const unavailable = await call('/bookings', {
@@ -168,7 +175,13 @@ test('rejeita conflito, passado, tecnologia incompatível e equipamento inativo'
   assert.equal(unavailable.status, 400);
   await call('/equipment/' + equipment.id, {
     method: 'PUT',
-    body: { code: equipment.code, model: equipment.model, technology: equipment.technology, location: equipment.location, active: true },
+    body: {
+      code: equipment.code,
+      model: equipment.model,
+      technology: equipment.technology,
+      location: equipment.location,
+      active: true,
+    },
   });
 });
 
@@ -182,8 +195,18 @@ test('concorrência pelo mesmo equipamento aceita apenas uma reserva', async () 
     material_grams: 10,
   };
   const results = await Promise.all([
-    call('/bookings', { method: 'POST', body, session: userCookie, headers: { 'Idempotency-Key': 'concurrent-user' } }),
-    call('/bookings', { method: 'POST', body, session: managerCookie, headers: { 'Idempotency-Key': 'concurrent-manager' } }),
+    call('/bookings', {
+      method: 'POST',
+      body,
+      session: userCookie,
+      headers: { 'Idempotency-Key': 'concurrent-user' },
+    }),
+    call('/bookings', {
+      method: 'POST',
+      body,
+      session: managerCookie,
+      headers: { 'Idempotency-Key': 'concurrent-manager' },
+    }),
   ]);
   assert.deepEqual(results.map((result) => result.status).sort(), [201, 409]);
 });
@@ -197,7 +220,12 @@ test('saldo insuficiente impede reserva e cancelamento libera material', async (
     duration_min: 20,
     material_grams: 20,
   };
-  const warning = await call('/bookings', { method: 'POST', body, session: userCookie, headers: { 'Idempotency-Key': 'low-stock-1' } });
+  const warning = await call('/bookings', {
+    method: 'POST',
+    body,
+    session: userCookie,
+    headers: { 'Idempotency-Key': 'low-stock-1' },
+  });
   assert.equal(warning.status, 409);
   assert.match(warning.data.message, /Saldo disponível insuficiente/);
   const before = (await call('/materials')).data.find((entry) => entry.id === lowStock.id);
@@ -233,8 +261,26 @@ test('ciclo de execução registra consumo real e impede cancelamento inválido'
     },
   });
   assert.equal(created.status, 201);
-  assert.equal((await call('/bookings/' + created.data.id + '/status', { method: 'PATCH', session: userCookie, body: { status: 'confirmed' } })).status, 200);
-  assert.equal((await call('/bookings/' + created.data.id + '/status', { method: 'PATCH', session: userCookie, body: { status: 'in_progress' } })).status, 200);
+  assert.equal(
+    (
+      await call('/bookings/' + created.data.id + '/status', {
+        method: 'PATCH',
+        session: userCookie,
+        body: { status: 'confirmed' },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call('/bookings/' + created.data.id + '/status', {
+        method: 'PATCH',
+        session: userCookie,
+        body: { status: 'in_progress' },
+      })
+    ).status,
+    200,
+  );
   const started = (await call('/materials')).data.find((entry) => entry.id === material.id);
   assert.equal(Number(started.physical), Number(before.physical) - 40);
   assert.equal(Number(started.reserved), Number(before.reserved));
@@ -247,7 +293,16 @@ test('ciclo de execução registra consumo real e impede cancelamento inválido'
   assert.equal(done.data.status, 'done');
   const finished = (await call('/materials')).data.find((entry) => entry.id === material.id);
   assert.equal(Number(finished.physical), Number(before.physical) - 30);
-  assert.equal((await call('/bookings/' + created.data.id + '/cancel', { method: 'PATCH', session: userCookie, body: { reason: 'Não deve funcionar' } })).status, 409);
+  assert.equal(
+    (
+      await call('/bookings/' + created.data.id + '/cancel', {
+        method: 'PATCH',
+        session: userCookie,
+        body: { reason: 'Não deve funcionar' },
+      })
+    ).status,
+    409,
+  );
 });
 
 test('manutenção programada bloqueia reservas sobrepostas e pode ser concluída', async () => {
@@ -255,41 +310,90 @@ test('manutenção programada bloqueia reservas sobrepostas e pode ser concluíd
   const endsAt = future(1660);
   const scheduled = await call('/maintenance/windows', {
     method: 'POST',
-    body: { equipment_id: equipment.id, starts_at: startsAt, ends_at: endsAt,
-      kind: 'preventive', description: 'Limpeza preventiva do equipamento', responsible: 'Gestor Maker' },
+    body: {
+      equipment_id: equipment.id,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      kind: 'preventive',
+      description: 'Limpeza preventiva do equipamento',
+      responsible: 'Gestor Maker',
+    },
   });
   assert.equal(scheduled.status, 201);
-  const conflict = await call('/bookings', { method: 'POST', session: userCookie,
-    body: { equipment_id: equipment.id, material_id: material.id, project_id: project.id,
-      started_at: future(1620), duration_min: 20, material_grams: 10 } });
+  const conflict = await call('/bookings', {
+    method: 'POST',
+    session: userCookie,
+    body: {
+      equipment_id: equipment.id,
+      material_id: material.id,
+      project_id: project.id,
+      started_at: future(1620),
+      duration_min: 20,
+      material_grams: 10,
+    },
+  });
   assert.equal(conflict.status, 409);
   assert.match(conflict.data.message, /manutenção/);
-  assert.equal((await call('/maintenance/windows/' + scheduled.data.id + '/status', {
-    method: 'PATCH', body: { status: 'in_progress' } })).status, 200);
-  assert.equal((await call('/maintenance/windows/' + scheduled.data.id + '/status', {
-    method: 'PATCH', body: { status: 'done' } })).status, 200);
+  assert.equal(
+    (
+      await call('/maintenance/windows/' + scheduled.data.id + '/status', {
+        method: 'PATCH',
+        body: { status: 'in_progress' },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call('/maintenance/windows/' + scheduled.data.id + '/status', {
+        method: 'PATCH',
+        body: { status: 'done' },
+      })
+    ).status,
+    200,
+  );
 });
 
 test('manutenção, dashboard e métricas mantêm contratos e permissões', async () => {
   const denied = await call('/maintenance', {
     method: 'POST',
     session: userCookie,
-    body: { equipment_id: equipment.id, performed_at: '2026-10-20', description: 'Limpeza preventiva', next_due: '2026-11-20' },
+    body: {
+      equipment_id: equipment.id,
+      performed_at: '2026-10-20',
+      description: 'Limpeza preventiva',
+      next_due: '2026-11-20',
+    },
   });
   assert.equal(denied.status, 403);
   const invalid = await call('/maintenance', {
     method: 'POST',
-    body: { equipment_id: equipment.id, performed_at: '2026-10-20', description: 'Curto', next_due: '2026-10-19' },
+    body: {
+      equipment_id: equipment.id,
+      performed_at: '2026-10-20',
+      description: 'Curto',
+      next_due: '2026-10-19',
+    },
   });
   assert.equal(invalid.status, 400);
   const missing = await call('/maintenance', {
     method: 'POST',
-    body: { equipment_id: randomUUID(), performed_at: '2026-10-20', description: 'Limpeza preventiva', next_due: '2026-11-20' },
+    body: {
+      equipment_id: randomUUID(),
+      performed_at: '2026-10-20',
+      description: 'Limpeza preventiva',
+      next_due: '2026-11-20',
+    },
   });
   assert.equal(missing.status, 404);
   const created = await call('/maintenance', {
     method: 'POST',
-    body: { equipment_id: equipment.id, performed_at: '2025-10-20', description: 'Limpeza preventiva', next_due: '2025-11-20' },
+    body: {
+      equipment_id: equipment.id,
+      performed_at: '2025-10-20',
+      description: 'Limpeza preventiva',
+      next_due: '2025-11-20',
+    },
   });
   assert.equal(created.status, 201);
   assert.equal(created.data.status, 'overdue');
@@ -305,7 +409,9 @@ test('manutenção, dashboard e métricas mantêm contratos e permissões', asyn
   assert.ok(Number(metrics.data.bookings_done) >= 1);
   assert.ok(Number(metrics.data.bookings_cancelled) >= 1);
   assert.ok(Number(metrics.data.maintenance_count) >= 1);
-  assert.ok(metrics.data.maintenance_by_equipment.some((entry) => entry.equipment_code === equipment.code));
+  assert.ok(
+    metrics.data.maintenance_by_equipment.some((entry) => entry.equipment_code === equipment.code),
+  );
   assert.ok(Array.isArray(metrics.data.material_by_project));
   const oldPeriod = await call('/metrics?from=2020-01-01&to=2020-01-02');
   assert.equal(oldPeriod.status, 200);

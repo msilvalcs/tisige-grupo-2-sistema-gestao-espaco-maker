@@ -110,10 +110,10 @@ function Workspace({ user, onLogout }) {
           page === 'dashboard'
             ? '/dashboard'
             : page === 'maintenance'
-                ? '/maintenance/windows'
-                : page === 'metrics'
-                  ? '/metrics'
-                  : '/dashboard',
+              ? '/maintenance/windows'
+              : page === 'metrics'
+                ? '/metrics'
+                : '/dashboard',
         ),
       ]);
       setData((current) => ({
@@ -170,7 +170,9 @@ function Workspace({ user, onLogout }) {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <a className="brand" href="#dashboard">SIGES<span>Gestão Maker</span></a>
+        <a className="brand" href="#dashboard">
+          SIGES<span>Gestão Maker</span>
+        </a>
         <div className="nav-heading">ESPAÇO DE TRABALHO</div>
         <nav aria-label="Navegação principal">
           {navigation
@@ -190,7 +192,9 @@ function Workspace({ user, onLogout }) {
         <div className="sidebar-foot">
           <strong>Espaço Maker PUC Minas</strong>
           <small>Coração Eucarístico</small>
-          <small>{user.name} · {manager ? 'Gestor' : 'Usuário'}</small>
+          <small>
+            {user.name} · {manager ? 'Gestor' : 'Usuário'}
+          </small>
         </div>
       </aside>
       <div className="workspace">
@@ -199,7 +203,13 @@ function Workspace({ user, onLogout }) {
             <span>SIGES / </span>
             {title}
           </div>
-          <time className="topbar-time">{new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'medium', timeStyle: 'short' })}</time>
+          <time className="topbar-time">
+            {new Date().toLocaleString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </time>
           <div className="account">
             <span className="role-pill">{manager ? 'Gestor' : 'Usuário'}</span>
             <button className="icon-button" onClick={logout} aria-label="Sair da conta">
@@ -210,17 +220,41 @@ function Workspace({ user, onLogout }) {
         <main className="content">
           <div className="page-heading">
             <div>
-              <h1>{connectionError ? 'Não foi possível atualizar os dados' : page === 'dashboard' ? (data.dashboard?.saudacao || 'Olá') + ', ' + user.name.split(' ')[0] : page === 'equipment' ? 'Gestão de equipamentos' : page === 'materials' ? 'Gestão de insumos' : page === 'metrics' ? 'Métricas de impressão' : title}</h1>
+              <h1>
+                {connectionError
+                  ? 'Não foi possível atualizar os dados'
+                  : page === 'dashboard'
+                    ? (data.dashboard?.saudacao || 'Olá') + ', ' + user.name.split(' ')[0]
+                    : page === 'equipment'
+                      ? 'Gestão de equipamentos'
+                      : page === 'materials'
+                        ? 'Gestão de insumos'
+                        : page === 'metrics'
+                          ? 'Métricas de impressão'
+                          : title}
+              </h1>
               <p className="muted">
-                {connectionError ? 'A conexão foi interrompida. As informações podem estar desatualizadas.' : page === 'dashboard'
-                  ? 'Acompanhe a operação do espaço maker em um só lugar.'
-                  : descriptions[page]}
+                {connectionError
+                  ? 'A conexão foi interrompida. As informações podem estar desatualizadas.'
+                  : page === 'dashboard'
+                    ? 'Acompanhe a operação do espaço maker em um só lugar.'
+                    : descriptions[page]}
               </p>
             </div>
-            {(page === 'dashboard' || page === 'bookings' || page === 'maintenance' || page === 'projects' || page === 'equipment' || page === 'materials' || page === 'users') &&
+            {(page === 'dashboard' ||
+              page === 'bookings' ||
+              page === 'maintenance' ||
+              page === 'projects' ||
+              page === 'equipment' ||
+              page === 'materials' ||
+              page === 'users') &&
               (page === 'dashboard' || manager || page === 'projects' || page === 'bookings') &&
-              navigation.some(([k]) => k === page) && !connectionError && (
-                <button className="primary" onClick={page === 'dashboard' ? newBooking : () => setModal({ kind: page })}>
+              navigation.some(([k]) => k === page) &&
+              !connectionError && (
+                <button
+                  className="primary"
+                  onClick={page === 'dashboard' ? newBooking : () => setModal({ kind: page })}
+                >
                   <Plus size={18} />
                   {page === 'dashboard'
                     ? 'Novo agendamento'
@@ -248,7 +282,33 @@ function Workspace({ user, onLogout }) {
               </button>
             </div>
           )}
-          {connectionError && !loading && <><div className="notice warning-notice"><strong>Última atualização confirmada: {updated ? updated.toLocaleString('pt-BR') : 'não disponível'}</strong><span>Não foi possível verificar disponibilidade e estoque. Confirmações de reservas ficam indisponíveis até a reconexão.</span></div><section className="panel offline-panel"><h2>Tente novamente</h2><p>Confira sua conexão e tente carregar o painel novamente.</p><div className="page-actions"><button className="primary" onClick={load}>Tentar atualizar</button><button className="secondary" disabled>Confirmar reserva</button></div><small>{error}</small></section></>}
+          {connectionError && !loading && (
+            <>
+              <div className="notice warning-notice">
+                <strong>
+                  Última atualização confirmada:{' '}
+                  {updated ? updated.toLocaleString('pt-BR') : 'não disponível'}
+                </strong>
+                <span>
+                  Não foi possível verificar disponibilidade e estoque. Confirmações de reservas
+                  ficam indisponíveis até a reconexão.
+                </span>
+              </div>
+              <section className="panel offline-panel">
+                <h2>Tente novamente</h2>
+                <p>Confira sua conexão e tente carregar o painel novamente.</p>
+                <div className="page-actions">
+                  <button className="primary" onClick={load}>
+                    Tentar atualizar
+                  </button>
+                  <button className="secondary" disabled>
+                    Confirmar reserva
+                  </button>
+                </div>
+                <small>{error}</small>
+              </section>
+            </>
+          )}
           {loading ? (
             <div className="panel loading" role="status">
               Carregando dados do laboratório...
@@ -257,11 +317,40 @@ function Workspace({ user, onLogout }) {
             !error && (
               <>
                 {page === 'dashboard' ? (
-                  <Dashboard data={data} onOpenBooking={(item) => { location.hash = 'bookings'; if (['scheduled', 'confirmed', 'in_progress'].includes(item.status)) window.setTimeout(() => setModal({ kind: 'status-booking', item }), 0); }} />
+                  <Dashboard
+                    data={data}
+                    onOpenBooking={(item) => {
+                      location.hash = 'bookings';
+                      if (['scheduled', 'confirmed', 'in_progress'].includes(item.status))
+                        window.setTimeout(() => setModal({ kind: 'status-booking', item }), 0);
+                    }}
+                  />
                 ) : page === 'bookings' ? (
-                  <Bookings records={data.bookings} equipment={data.equipment} onBooking={newBooking} onCancel={(item) => setModal({ kind: 'cancel-booking', item })} onStatus={(item) => setModal({ kind: 'status-booking', item })} />
+                  <Bookings
+                    records={data.bookings}
+                    equipment={data.equipment}
+                    onBooking={newBooking}
+                    onCancel={(item) => setModal({ kind: 'cancel-booking', item })}
+                    onStatus={(item) => setModal({ kind: 'status-booking', item })}
+                  />
                 ) : page === 'maintenance' ? (
-                  <Maintenance records={data.maintenance} manager={manager} onStatus={async (item, status) => { try { await api('/maintenance/windows/' + item.id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) }); await saved(status === 'done' ? 'Manutenção concluída.' : 'Manutenção iniciada.'); } catch (e) { setError(e.message); } }} />
+                  <Maintenance
+                    records={data.maintenance}
+                    manager={manager}
+                    onStatus={async (item, status) => {
+                      try {
+                        await api('/maintenance/windows/' + item.id + '/status', {
+                          method: 'PATCH',
+                          body: JSON.stringify({ status }),
+                        });
+                        await saved(
+                          status === 'done' ? 'Manutenção concluída.' : 'Manutenção iniciada.',
+                        );
+                      } catch (e) {
+                        setError(e.message);
+                      }
+                    }}
+                  />
                 ) : page === 'metrics' ? (
                   <Metrics data={data.metrics} />
                 ) : (
@@ -288,8 +377,80 @@ function Workspace({ user, onLogout }) {
                         </select>
                       )}
                     </div>
-                    {page === 'equipment' && <div className="stats"><Stat label="Cadastradas" value={data.equipment.length} note="Todas nesta unidade" /><Stat label="Livres agora" value={data.equipment.filter((item) => item.active && item.condition_now === 'free').length} note="Aptas para operação" /><Stat label="Imprimindo" value={data.equipment.filter((item) => item.condition_now === 'printing').length} note="Em uso neste momento" /><Stat label="Em manutenção" value={data.equipment.filter((item) => item.condition_now === 'maintenance').length} note="Indisponíveis agora" /></div>}
-                    {page === 'materials' && <div className="stats"><Stat label="Insumos cadastrados" value={data.materials.length} note="Filamentos e resinas" /><Stat label="Sem alerta" value={data.materials.filter((item) => item.active && Number(item.available) > Number(item.minimum)).length} note="Disponível acima do mínimo" /><Stat label="Estoque baixo" value={data.materials.filter((item) => item.active && Number(item.available) > 0 && Number(item.available) <= Number(item.minimum)).length} note="Abaixo do mínimo" /><Stat label="Sem estoque" value={data.materials.filter((item) => item.active && Number(item.available) <= 0).length} note="Saldo indisponível" /></div>}
+                    {page === 'equipment' && (
+                      <div className="stats">
+                        <Stat
+                          label="Cadastradas"
+                          value={data.equipment.length}
+                          note="Todas nesta unidade"
+                        />
+                        <Stat
+                          label="Livres agora"
+                          value={
+                            data.equipment.filter(
+                              (item) => item.active && item.condition_now === 'free',
+                            ).length
+                          }
+                          note="Aptas para operação"
+                        />
+                        <Stat
+                          label="Imprimindo"
+                          value={
+                            data.equipment.filter((item) => item.condition_now === 'printing')
+                              .length
+                          }
+                          note="Em uso neste momento"
+                        />
+                        <Stat
+                          label="Em manutenção"
+                          value={
+                            data.equipment.filter((item) => item.condition_now === 'maintenance')
+                              .length
+                          }
+                          note="Indisponíveis agora"
+                        />
+                      </div>
+                    )}
+                    {page === 'materials' && (
+                      <div className="stats">
+                        <Stat
+                          label="Insumos cadastrados"
+                          value={data.materials.length}
+                          note="Filamentos e resinas"
+                        />
+                        <Stat
+                          label="Sem alerta"
+                          value={
+                            data.materials.filter(
+                              (item) =>
+                                item.active && Number(item.available) > Number(item.minimum),
+                            ).length
+                          }
+                          note="Disponível acima do mínimo"
+                        />
+                        <Stat
+                          label="Estoque baixo"
+                          value={
+                            data.materials.filter(
+                              (item) =>
+                                item.active &&
+                                Number(item.available) > 0 &&
+                                Number(item.available) <= Number(item.minimum),
+                            ).length
+                          }
+                          note="Abaixo do mínimo"
+                        />
+                        <Stat
+                          label="Sem estoque"
+                          value={
+                            data.materials.filter(
+                              (item) => item.active && Number(item.available) <= 0,
+                            ).length
+                          }
+                          note="Saldo indisponível"
+                        />
+                      </div>
+                    )}
                     <section className="panel table-panel">
                       <Records
                         page={page}
@@ -346,62 +507,333 @@ function Dashboard({ data, onOpenBooking }) {
     today_bookings: [],
     stock_alerts: [],
   };
-  const active = data.equipment.filter((item) => item.active && item.condition_now !== 'maintenance').length;
+  const active = data.equipment.filter(
+    (item) => item.active && item.condition_now !== 'maintenance',
+  ).length;
   const printing = data.equipment.filter((item) => item.condition_now === 'printing').length;
   const free = data.equipment.filter((item) => item.active && item.condition_now === 'free').length;
   const maintenance = data.equipment.filter((item) => item.condition_now === 'maintenance').length;
-  return <>
-    <div className="stats">
-      <Stat label="Aptas para operação" value={`${active} de ${data.equipment.length}`} note={`${free} livres · ${printing} imprimindo`} />
-      <Stat label="Reservas hoje" value={dashboard.bookings_today} note={`${printing} em andamento · ${dashboard.today_bookings.filter((item) => item.status === 'confirmed').length} confirmadas`} />
-      <Stat label="Insumos em alerta" value={dashboard.materials_alert} note={`${dashboard.stock_alerts.filter((item) => Number(item.available) > 0).length} abaixo do mínimo · ${dashboard.stock_alerts.filter((item) => Number(item.available) <= 0).length} zerados`} />
-      <Stat label="Equipamentos inativos" value={maintenance} note="Indisponíveis para novas reservas" />
-    </div>
-    {!!dashboard.stock_alerts.length && <div className="notice warning-notice"><strong>Atenção ao estoque</strong><span>{dashboard.stock_alerts.map((item) => item.name).join(', ')} precisam de reposição.</span></div>}
-    <h2 className="section-title">Agenda de hoje</h2>
-    <section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Horário</th><th>Projeto / solicitante</th><th>Equipamento</th><th>Situação</th><th></th></tr></thead><tbody>{dashboard.today_bookings.map((booking) => <tr key={booking.id}><td>{formatTime(booking.started_at)} - {formatTime(new Date(new Date(booking.started_at).getTime() + booking.duration_min * 60000))}</td><td>{booking.project_name} · {booking.user_name}</td><td>{booking.equipment_code}</td><td><BookingBadge status={booking.status} /></td><td><button className="secondary table-action" onClick={() => onOpenBooking(booking)}>{booking.status === 'in_progress' ? 'Ver detalhes' : 'Ver agenda'}</button></td></tr>)}</tbody></table>{!dashboard.today_bookings.length && <Empty message="Nenhum agendamento para hoje." />}</div></section>
-    <div className="dashboard-grid info-grid"><section className="panel"><h2>Materiais disponíveis</h2><p>{data.materials.filter((item) => item.active && Number(item.available) > 0).sort((a, b) => Number(b.available) - Number(a.available)).slice(0, 3).map((item) => `${item.name}: ${number(item.available)} ${item.unit}`).join(' · ') || 'Nenhum insumo disponível.'}</p><a className="secondary table-action" href="#materials">Abrir estoque</a></section><section className="panel"><h2>Disponibilidade confiável</h2><p>Última atualização: {new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p><p>Consulte a agenda para verificar o intervalo desejado.</p><a className="secondary table-action" href="#equipment">Consultar equipamentos</a></section></div>
-  </>;
+  return (
+    <>
+      <div className="stats">
+        <Stat
+          label="Aptas para operação"
+          value={`${active} de ${data.equipment.length}`}
+          note={`${free} livres · ${printing} imprimindo`}
+        />
+        <Stat
+          label="Reservas hoje"
+          value={dashboard.bookings_today}
+          note={`${printing} em andamento · ${dashboard.today_bookings.filter((item) => item.status === 'confirmed').length} confirmadas`}
+        />
+        <Stat
+          label="Insumos em alerta"
+          value={dashboard.materials_alert}
+          note={`${dashboard.stock_alerts.filter((item) => Number(item.available) > 0).length} abaixo do mínimo · ${dashboard.stock_alerts.filter((item) => Number(item.available) <= 0).length} zerados`}
+        />
+        <Stat
+          label="Equipamentos inativos"
+          value={maintenance}
+          note="Indisponíveis para novas reservas"
+        />
+      </div>
+      {!!dashboard.stock_alerts.length && (
+        <div className="notice warning-notice">
+          <strong>Atenção ao estoque</strong>
+          <span>
+            {dashboard.stock_alerts.map((item) => item.name).join(', ')} precisam de reposição.
+          </span>
+        </div>
+      )}
+      <h2 className="section-title">Agenda de hoje</h2>
+      <section className="panel table-panel">
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Projeto / solicitante</th>
+                <th>Equipamento</th>
+                <th>Situação</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.today_bookings.map((booking) => (
+                <tr key={booking.id}>
+                  <td>
+                    {formatTime(booking.started_at)} -{' '}
+                    {formatTime(
+                      new Date(
+                        new Date(booking.started_at).getTime() + booking.duration_min * 60000,
+                      ),
+                    )}
+                  </td>
+                  <td>
+                    {booking.project_name} · {booking.user_name}
+                  </td>
+                  <td>{booking.equipment_code}</td>
+                  <td>
+                    <BookingBadge status={booking.status} />
+                  </td>
+                  <td>
+                    <button
+                      className="secondary table-action"
+                      onClick={() => onOpenBooking(booking)}
+                    >
+                      {booking.status === 'in_progress' ? 'Ver detalhes' : 'Ver agenda'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!dashboard.today_bookings.length && <Empty message="Nenhum agendamento para hoje." />}
+        </div>
+      </section>
+      <div className="dashboard-grid info-grid">
+        <section className="panel">
+          <h2>Materiais disponíveis</h2>
+          <p>
+            {data.materials
+              .filter((item) => item.active && Number(item.available) > 0)
+              .sort((a, b) => Number(b.available) - Number(a.available))
+              .slice(0, 3)
+              .map((item) => `${item.name}: ${number(item.available)} ${item.unit}`)
+              .join(' · ') || 'Nenhum insumo disponível.'}
+          </p>
+          <a className="secondary table-action" href="#materials">
+            Abrir estoque
+          </a>
+        </section>
+        <section className="panel">
+          <h2>Disponibilidade confiável</h2>
+          <p>
+            Última atualização:{' '}
+            {new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+          </p>
+          <p>Consulte a agenda para verificar o intervalo desejado.</p>
+          <a className="secondary table-action" href="#equipment">
+            Consultar equipamentos
+          </a>
+        </section>
+      </div>
+    </>
+  );
 }
 function Bookings({ records, equipment, onBooking, onCancel, onStatus }) {
   const [date, setDate] = useState('');
   const [equipmentId, setEquipmentId] = useState('all');
   const [status, setStatus] = useState('all');
-  const filtered = records.filter((item) => (!date || item.started_at.slice(0, 10) === date) && (equipmentId === 'all' || item.equipment_id === equipmentId) && (status === 'all' || item.status === status));
+  const filtered = records.filter(
+    (item) =>
+      (!date || item.started_at.slice(0, 10) === date) &&
+      (equipmentId === 'all' || item.equipment_id === equipmentId) &&
+      (status === 'all' || item.status === status),
+  );
   return (
-    <><div className="booking-filters"><label>Período<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label><label>Equipamento<select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)}><option value="all">Todos os equipamentos</option>{equipment.map((item) => <option key={item.id} value={item.id}>{item.code}</option>)}</select></label><label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}><option value="all">Todos os status</option>{['scheduled','confirmed','in_progress','done','interrupted','cancelled'].map((value) => <option key={value} value={value}>{value === 'scheduled' ? 'Agendado' : value === 'in_progress' ? 'Em andamento' : value === 'done' ? 'Concluído' : value === 'interrupted' ? 'Interrompido' : value === 'cancelled' ? 'Cancelado' : 'Confirmado'}</option>)}</select></label></div>
-    <div className="notice blue-notice"><strong>Disponibilidade por intervalo</strong><span>Máquinas em uso podem estar livres mais tarde. Confira o período ao criar uma reserva.</span></div>
-    <section className="panel table-panel">
-      <div className="table-scroll">
-        <table>
-          <thead><tr><th>Horário</th><th>Projeto / responsável</th><th>Equipamento</th><th>Material estimado</th><th>Status</th><th></th></tr></thead>
-          <tbody>{filtered.map((booking) => (
-            <tr key={booking.id}>
-              <td>{formatDateTime(booking.started_at)} - {formatTime(new Date(new Date(booking.started_at).getTime() + booking.duration_min * 60000))}</td>
-              <td>{booking.project_name} · {booking.user_name}</td>
-              <td>{booking.equipment_code}</td>
-              <td>{booking.material_name} · {number(booking.material_grams)} {booking.material_unit}</td>
-              <td><BookingBadge status={booking.status} /></td>
-              <td><div className="row-actions">{['scheduled', 'confirmed', 'in_progress'].includes(booking.status) && <button className="secondary table-action" onClick={() => onStatus(booking)}>{booking.status === 'in_progress' ? 'Acompanhar' : 'Detalhes'}</button>}{['scheduled', 'confirmed'].includes(booking.status) && <button className="text-button" onClick={() => onCancel(booking)}>Cancelar</button>}</div></td>
-            </tr>
-          ))}</tbody>
-        </table>
-        {!filtered.length && <Empty message="Nenhuma reserva encontrada para os filtros selecionados." />}
+    <>
+      <div className="booking-filters">
+        <label>
+          Período
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+        <label>
+          Equipamento
+          <select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)}>
+            <option value="all">Todos os equipamentos</option>
+            {equipment.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.code}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="all">Todos os status</option>
+            {['scheduled', 'confirmed', 'in_progress', 'done', 'interrupted', 'cancelled'].map(
+              (value) => (
+                <option key={value} value={value}>
+                  {value === 'scheduled'
+                    ? 'Agendado'
+                    : value === 'in_progress'
+                      ? 'Em andamento'
+                      : value === 'done'
+                        ? 'Concluído'
+                        : value === 'interrupted'
+                          ? 'Interrompido'
+                          : value === 'cancelled'
+                            ? 'Cancelado'
+                            : 'Confirmado'}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
       </div>
-    </section>
-    <div className="page-actions"><button className="primary" onClick={onBooking}>Nova reserva</button><span>Mostrando {filtered.length} de {records.length} reservas · Horário de Brasília (UTC-3)</span></div></>
+      <div className="notice blue-notice">
+        <strong>Disponibilidade por intervalo</strong>
+        <span>
+          Máquinas em uso podem estar livres mais tarde. Confira o período ao criar uma reserva.
+        </span>
+      </div>
+      <section className="panel table-panel">
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Projeto / responsável</th>
+                <th>Equipamento</th>
+                <th>Material estimado</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((booking) => (
+                <tr key={booking.id}>
+                  <td>
+                    {formatDateTime(booking.started_at)} -{' '}
+                    {formatTime(
+                      new Date(
+                        new Date(booking.started_at).getTime() + booking.duration_min * 60000,
+                      ),
+                    )}
+                  </td>
+                  <td>
+                    {booking.project_name} · {booking.user_name}
+                  </td>
+                  <td>{booking.equipment_code}</td>
+                  <td>
+                    {booking.material_name} · {number(booking.material_grams)}{' '}
+                    {booking.material_unit}
+                  </td>
+                  <td>
+                    <BookingBadge status={booking.status} />
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      {['scheduled', 'confirmed', 'in_progress'].includes(booking.status) && (
+                        <button
+                          className="secondary table-action"
+                          onClick={() => onStatus(booking)}
+                        >
+                          {booking.status === 'in_progress' ? 'Acompanhar' : 'Detalhes'}
+                        </button>
+                      )}
+                      {['scheduled', 'confirmed'].includes(booking.status) && (
+                        <button className="text-button" onClick={() => onCancel(booking)}>
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!filtered.length && (
+            <Empty message="Nenhuma reserva encontrada para os filtros selecionados." />
+          )}
+        </div>
+      </section>
+      <div className="page-actions">
+        <button className="primary" onClick={onBooking}>
+          Nova reserva
+        </button>
+        <span>
+          Mostrando {filtered.length} de {records.length} reservas · Horário de Brasília (UTC-3)
+        </span>
+      </div>
+    </>
   );
 }
 function Maintenance({ records, manager, onStatus }) {
-  const today = records.filter((item) => item.status !== 'done' && new Date(item.starts_at).toDateString() === new Date().toDateString());
+  const today = records.filter(
+    (item) =>
+      item.status !== 'done' &&
+      new Date(item.starts_at).toDateString() === new Date().toDateString(),
+  );
   return (
-    <>{!!today.length && <div className="notice warning-notice"><strong>Equipamento indisponível</strong><span>{today.map((item) => item.equipment_code).join(', ')} com manutenção prevista ou em andamento hoje.</span></div>}<section className="panel table-panel"><div className="table-scroll"><table>
-      <thead><tr><th>Equipamento</th><th>Serviço / responsável</th><th>Período</th><th>Situação</th><th></th></tr></thead>
-      <tbody>{records.map((item) => <tr key={item.id}>
-        <td>{item.equipment_code}</td><td>{item.description} · {item.responsible}</td><td>{formatDateTime(item.starts_at)} - {formatTime(item.ends_at)}</td>
-        <td><Badge tone={item.status === 'done' ? 'good' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{item.status === 'done' ? 'Concluída' : item.status === 'in_progress' ? 'Em serviço' : 'Agendada'}</Badge></td><td>{manager && item.status !== 'done' && <button className="secondary table-action" onClick={() => onStatus(item, item.status === 'scheduled' ? 'in_progress' : 'done')}>{item.status === 'scheduled' ? 'Iniciar' : 'Concluir'}</button>}</td>
-      </tr>)}</tbody>
-    </table>{!records.length && <Empty message="Nenhuma manutenção programada." />}</div></section><section className="panel maintenance-note"><h2>Plano preventivo</h2><p>A programação verifica reservas existentes antes de bloquear o período. O histórico de cada serviço fica preservado.</p></section></>
+    <>
+      {!!today.length && (
+        <div className="notice warning-notice">
+          <strong>Equipamento indisponível</strong>
+          <span>
+            {today.map((item) => item.equipment_code).join(', ')} com manutenção prevista ou em
+            andamento hoje.
+          </span>
+        </div>
+      )}
+      <section className="panel table-panel">
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Equipamento</th>
+                <th>Serviço / responsável</th>
+                <th>Período</th>
+                <th>Situação</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.equipment_code}</td>
+                  <td>
+                    {item.description} · {item.responsible}
+                  </td>
+                  <td>
+                    {formatDateTime(item.starts_at)} - {formatTime(item.ends_at)}
+                  </td>
+                  <td>
+                    <Badge
+                      tone={
+                        item.status === 'done'
+                          ? 'good'
+                          : item.status === 'in_progress'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                    >
+                      {item.status === 'done'
+                        ? 'Concluída'
+                        : item.status === 'in_progress'
+                          ? 'Em serviço'
+                          : 'Agendada'}
+                    </Badge>
+                  </td>
+                  <td>
+                    {manager && item.status !== 'done' && (
+                      <button
+                        className="secondary table-action"
+                        onClick={() =>
+                          onStatus(item, item.status === 'scheduled' ? 'in_progress' : 'done')
+                        }
+                      >
+                        {item.status === 'scheduled' ? 'Iniciar' : 'Concluir'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!records.length && <Empty message="Nenhuma manutenção programada." />}
+        </div>
+      </section>
+      <section className="panel maintenance-note">
+        <h2>Plano preventivo</h2>
+        <p>
+          A programação verifica reservas existentes antes de bloquear o período. O histórico de
+          cada serviço fica preservado.
+        </p>
+      </section>
+    </>
   );
 }
 function Metrics({ data }) {
@@ -411,40 +843,167 @@ function Metrics({ data }) {
   const [filterError, setFilterError] = useState('');
   useEffect(() => setMetrics(data), [data]);
   useEffect(() => {
-    if (!from && !to) { setMetrics(data); setFilterError(''); return; }
+    if (!from && !to) {
+      setMetrics(data);
+      setFilterError('');
+      return;
+    }
     if (!from || !to || from > to) return;
     let active = true;
-    api(`/metrics?from=${from}&to=${to}`).then((result) => { if (active) { setMetrics(result); setFilterError(''); } }).catch((error) => { if (active) setFilterError(error.message); });
-    return () => { active = false; };
+    api(`/metrics?from=${from}&to=${to}`)
+      .then((result) => {
+        if (active) {
+          setMetrics(result);
+          setFilterError('');
+        }
+      })
+      .catch((error) => {
+        if (active) setFilterError(error.message);
+      });
+    return () => {
+      active = false;
+    };
   }, [from, to, data]);
-  if (!data) return <section className="panel"><Empty message="As métricas ainda não foram carregadas." /></section>;
-  return <>
-    <div className="metrics-filters"><fieldset><legend>Período analisado</legend><input type="date" aria-label="De" value={from} onChange={(event) => setFrom(event.target.value)} /><span>até</span><input type="date" aria-label="Até" value={to} min={from} onChange={(event) => setTo(event.target.value)} /></fieldset><label>Unidade<input value="Coração Eucarístico" readOnly /></label></div>
-    {filterError && <div className="error" role="alert">{filterError}</div>}
-    <div className="stats">
-      <Stat label="Filamento consumido" value={`${number(metrics.material_used_kg)} kg`} note="Consumo efetivo registrado" />
-      <Stat label="Resina consumida" value={`${number(metrics.resin_used_ml)} ml`} note="Apurada separadamente da massa" />
-      <Stat label="Impressões concluídas" value={metrics.bookings_done} note="Finalizadas no histórico" />
-      <Stat label="Interrompidas" value={metrics.bookings_interrupted} note="Incluídas no consumo efetivo" />
-    </div>
-    <MetricTable headers={['Projeto', 'Filamento real', 'Resina real', 'Conclusões', 'Interrupções']} rows={metrics.material_by_project.map((item) => [item.project_name, `${number(item.filament_grams)} g`, `${number(item.resin_ml)} ml`, item.completions, item.interruptions])} empty="Ainda não há impressões encerradas." />
-    <p className="table-caption">Totais: {number(metrics.filament_used_grams)} g de filamento · {number(metrics.resin_used_ml)} ml de resina · {metrics.bookings_done} conclusões · {metrics.bookings_interrupted} interrupções</p>
-    <div className="notice blue-notice"><strong>Consumo real inclui impressões interrompidas</strong><span>Os totais representam material efetivamente utilizado. Gramas e mililitros são apresentados separadamente.</span></div>
-  </>;
+  if (!data)
+    return (
+      <section className="panel">
+        <Empty message="As métricas ainda não foram carregadas." />
+      </section>
+    );
+  return (
+    <>
+      <div className="metrics-filters">
+        <fieldset>
+          <legend>Período analisado</legend>
+          <input
+            type="date"
+            aria-label="De"
+            value={from}
+            onChange={(event) => setFrom(event.target.value)}
+          />
+          <span>até</span>
+          <input
+            type="date"
+            aria-label="Até"
+            value={to}
+            min={from}
+            onChange={(event) => setTo(event.target.value)}
+          />
+        </fieldset>
+        <label>
+          Unidade
+          <input value="Coração Eucarístico" readOnly />
+        </label>
+      </div>
+      {filterError && (
+        <div className="error" role="alert">
+          {filterError}
+        </div>
+      )}
+      <div className="stats">
+        <Stat
+          label="Filamento consumido"
+          value={`${number(metrics.material_used_kg)} kg`}
+          note="Consumo efetivo registrado"
+        />
+        <Stat
+          label="Resina consumida"
+          value={`${number(metrics.resin_used_ml)} ml`}
+          note="Apurada separadamente da massa"
+        />
+        <Stat
+          label="Impressões concluídas"
+          value={metrics.bookings_done}
+          note="Finalizadas no histórico"
+        />
+        <Stat
+          label="Interrompidas"
+          value={metrics.bookings_interrupted}
+          note="Incluídas no consumo efetivo"
+        />
+      </div>
+      <MetricTable
+        headers={['Projeto', 'Filamento real', 'Resina real', 'Conclusões', 'Interrupções']}
+        rows={metrics.material_by_project.map((item) => [
+          item.project_name,
+          `${number(item.filament_grams)} g`,
+          `${number(item.resin_ml)} ml`,
+          item.completions,
+          item.interruptions,
+        ])}
+        empty="Ainda não há impressões encerradas."
+      />
+      <p className="table-caption">
+        Totais: {number(metrics.filament_used_grams)} g de filamento ·{' '}
+        {number(metrics.resin_used_ml)} ml de resina · {metrics.bookings_done} conclusões ·{' '}
+        {metrics.bookings_interrupted} interrupções
+      </p>
+      <div className="notice blue-notice">
+        <strong>Consumo real inclui impressões interrompidas</strong>
+        <span>
+          Os totais representam material efetivamente utilizado. Gramas e mililitros são
+          apresentados separadamente.
+        </span>
+      </div>
+    </>
+  );
 }
 function MetricTable({ headers, rows, empty }) {
-  return <section className="panel table-panel"><div className="table-scroll"><table><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>)}</tbody></table>{!rows.length && <Empty message={empty} />}</div></section>;
+  return (
+    <section className="panel table-panel">
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              {headers.map((header) => (
+                <th key={header}>{header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={index}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!rows.length && <Empty message={empty} />}
+      </div>
+    </section>
+  );
 }
 function BookingBadge({ status }) {
-  const labels = { scheduled: 'Agendado', confirmed: 'Confirmado', in_progress: 'Em andamento', done: 'Concluído', cancelled: 'Cancelado', interrupted: 'Interrompido' };
+  const labels = {
+    scheduled: 'Agendado',
+    confirmed: 'Confirmado',
+    in_progress: 'Em andamento',
+    done: 'Concluído',
+    cancelled: 'Cancelado',
+    interrupted: 'Interrompido',
+  };
   const tones = { cancelled: 'warning', interrupted: 'warning', done: 'good' };
   return <Badge tone={tones[status] || 'neutral'}>{labels[status] || status}</Badge>;
 }
 function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—';
+  return value
+    ? new Date(value).toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
+    : '—';
 }
 function formatTime(value) {
-  return value ? new Date(value).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—';
+  return value
+    ? new Date(value).toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
 }
 function Stat({ label, value, note, icon: Icon, warning }) {
   return (

@@ -95,7 +95,11 @@ export async function seed() {
     } = await client.query("SELECT id FROM equipment WHERE code='FDM-01'");
     if (
       seedEquipment &&
-      !(await client.query('SELECT 1 FROM maintenance_logs WHERE equipment_id=$1 LIMIT 1', [seedEquipment.id])).rowCount
+      !(
+        await client.query('SELECT 1 FROM maintenance_logs WHERE equipment_id=$1 LIMIT 1', [
+          seedEquipment.id,
+        ])
+      ).rowCount
     )
       await client.query(
         `INSERT INTO maintenance_logs(equipment_id,performed_at,description,next_due,created_by)
