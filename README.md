@@ -34,3 +34,5 @@ A documentação referente à primeira etapa encontra-se em:
 ## Aplicação executável - Entrega 01
 
 Monorepo com Node.js, React e PostgreSQL. Consulte [instruções de execução](docs/desenvolvimento.md), [requisitos e propostas](docs/requisitos-mvp.md) e [evidências de validação](docs/validacao-base.md).
+
+Para a implementação atual, consulte a [arquitetura e tecnologias](docs/arquitetura.md) e a [validação dos módulos de agendamento, manutenção e métricas](docs/validacao-novos-modulos.md).

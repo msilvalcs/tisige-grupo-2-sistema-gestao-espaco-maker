@@ -14,7 +14,7 @@
     "start": "npm start -w @siges/api",
     "db:migrate": "npm run db:migrate -w @siges/api",
     "db:seed": "npm run db:seed -w @siges/api",
-    "test": "node --test tests/api.test.mjs",
+    "test": "node --test tests/api.test.mjs && node --test tests/scheduling.test.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "db:local": "node scripts/local-db.mjs",

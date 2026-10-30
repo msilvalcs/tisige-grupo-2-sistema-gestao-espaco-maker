@@ -90,6 +90,23 @@ export async function seed() {
           [result.rows[0].id, physical],
         );
     }
+    const {
+      rows: [seedEquipment],
+    } = await client.query("SELECT id FROM equipment WHERE code='FDM-01'");
+    if (
+      seedEquipment &&
+      !(
+        await client.query('SELECT 1 FROM maintenance_logs WHERE equipment_id=$1 LIMIT 1', [
+          seedEquipment.id,
+        ])
+      ).rowCount
+    )
+      await client.query(
+        `INSERT INTO maintenance_logs(equipment_id,performed_at,description,next_due,created_by)
+         SELECT $1,'2026-10-20','Calibração preventiva e limpeza do bico','2026-11-20',id
+         FROM users WHERE email='gestor@siges.local'`,
+        [seedEquipment.id],
+      );
   });
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

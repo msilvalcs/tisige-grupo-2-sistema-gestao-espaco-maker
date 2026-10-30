@@ -610,6 +610,65 @@ td small {
   font-size: 12px;
   font-weight: 500;
 }
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 20px;
+}
+.equipment-card {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #dce2eb;
+  border-radius: 9px;
+  padding: 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.equipment-card.selected {
+  border-color: #5367d9;
+  background: #f3f5ff;
+  box-shadow: 0 0 0 2px #5367d922;
+}
+.equipment-card input {
+  width: 16px;
+  accent-color: #5367d9;
+}
+.equipment-card small,
+.equipment-card em {
+  color: #6c7a91;
+  font-size: 10px;
+  font-style: normal;
+}
+.confirmation {
+  border: 1px solid #f0d4a7;
+  background: #fff8eb;
+  color: #79521a;
+  border-radius: 8px;
+  padding: 13px;
+  margin-top: 12px;
+}
+.confirmation p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 5px;
+}
+.confirmation .modal-actions {
+  border-top: 0;
+  padding-top: 10px;
+  margin-top: 0;
+}
+.small-button {
+  padding: 7px 9px;
+  font-size: 11px;
+}
 input,
 textarea,
 select {
@@ -989,6 +1048,10 @@ input::placeholder {
   .modal {
     padding: 20px;
   }
+  .two-columns,
+  .equipment-grid {
+    grid-template-columns: 1fr;
+  }
   .modal-heading h2 {
     font-size: 18px;
   }
@@ -1003,5 +1066,574 @@ input::placeholder {
   nav a {
     padding: 10px 7px;
     font-size: 10px;
+  }
+}
+
+/* Atualização visual das telas de operação. */
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #192238;
+  background: #f3f6fb;
+}
+h1,
+h2,
+.brand {
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+h1 {
+  font-size: 32px;
+  font-weight: 700;
+}
+h2 {
+  font-size: 19px;
+  font-weight: 700;
+}
+.sidebar {
+  width: 232px;
+  background: #141e30;
+  padding: 32px 16px 18px;
+}
+.sidebar .brand {
+  display: block;
+  width: auto;
+  margin: 0 16px;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+.sidebar .brand span {
+  display: block;
+  padding: 0;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #b9c3d4;
+}
+.nav-heading {
+  margin: 28px 0 10px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #b9c3d4;
+}
+nav {
+  gap: 7px;
+}
+nav a {
+  min-height: 45px;
+  padding: 13px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+nav .nav-icon {
+  display: none;
+}
+nav a.active {
+  background: #19243a;
+  color: #b8f522;
+}
+.sidebar-foot {
+  padding: 0;
+  border: 0;
+}
+.sidebar-foot strong {
+  margin: 0 0 8px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+}
+.sidebar-foot small {
+  color: #b9c3d4;
+  font-size: 12px;
+  line-height: 2;
+}
+.workspace {
+  margin-left: 232px;
+}
+.topbar {
+  height: 72px;
+  margin: 0;
+  padding: 0 24px;
+  border: 1px solid #d5dfed;
+  border-radius: 8px;
+  color: #4c607d;
+  font-size: 12px;
+}
+.topbar-time {
+  color: #4c607d;
+}
+.role-pill {
+  padding: 7px 11px;
+  background: #f4f6fa;
+  border-radius: 9px;
+}
+.account button {
+  margin-left: 5px;
+}
+.content {
+  max-width: 1500px;
+  padding: 32px;
+}
+.page-heading {
+  margin-bottom: 24px;
+  align-items: start;
+}
+.page-heading h1 {
+  margin: 0 0 8px;
+}
+.page-heading p {
+  font-size: 14px;
+  color: #596e8c;
+}
+.page-heading .primary {
+  min-width: 244px;
+}
+.page-heading .primary svg {
+  display: none;
+}
+.primary,
+.secondary {
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.primary {
+  background: #141e30;
+}
+.secondary {
+  color: #192238;
+  background: white;
+  border: 1px solid #d4dfef;
+}
+.stats {
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat {
+  min-height: 130px;
+  border-color: #d4dfef;
+  border-radius: 8px;
+  padding: 20px;
+}
+.stat > div {
+  font-size: 12px;
+  font-weight: 400;
+  color: #506584;
+}
+.stat > div svg {
+  display: none;
+}
+.stat > strong {
+  font:
+    700 31px 'DM Sans',
+    sans-serif;
+  margin: 8px 0 6px;
+  letter-spacing: -0.02em;
+}
+.stat > small {
+  font-size: 12px;
+  color: #506584;
+}
+.panel {
+  border-color: #d4dfef;
+  border-radius: 8px;
+  padding: 24px;
+}
+.table-panel {
+  padding: 0;
+}
+.section-title {
+  margin: 26px 0 22px;
+}
+table {
+  font-size: 14px;
+}
+th {
+  background: #f3f6fa;
+  border: 0;
+  padding: 18px 16px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #506584;
+}
+td {
+  padding: 10px 16px;
+  border: 0;
+  height: 62px;
+}
+td strong {
+  font-size: 14px;
+}
+.table-action {
+  min-width: 150px;
+  min-height: 44px;
+  padding: 10px 15px;
+  font-size: 14px;
+  text-align: center;
+}
+.badge {
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+.good {
+  color: #007642;
+  background: #e8f6ef;
+}
+.neutral {
+  color: #334dea;
+  background: #ecf0ff;
+}
+.warning {
+  color: #955200;
+  background: #fff1d5;
+}
+.danger {
+  color: #c52144;
+  background: #fff0f3;
+}
+.notice {
+  display: grid;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 18px 16px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.warning-notice {
+  color: #935600;
+  background: #fff3db;
+}
+.blue-notice {
+  color: #3049ed;
+  background: #eceeff;
+}
+.info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 24px;
+}
+.info-grid .panel {
+  display: grid;
+  justify-items: start;
+  gap: 15px;
+}
+.info-grid p {
+  font-size: 14px;
+  color: #5a6f8d;
+}
+.info-grid h2 + p {
+  color: #192238;
+}
+.booking-filters {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1.4fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.booking-filters label {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+}
+.booking-filters input,
+.booking-filters select {
+  height: 48px;
+}
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 24px;
+  color: #506584;
+  font-size: 12px;
+}
+.toolbar {
+  margin-bottom: 20px;
+}
+.search {
+  width: 100%;
+  max-width: 400px;
+}
+.toolbar select {
+  min-height: 44px;
+}
+.content-footer {
+  margin-top: 24px;
+}
+.modal-backdrop {
+  left: 232px;
+  top: 72px;
+  padding: 32px;
+  display: block;
+  background: #f3f6fb;
+  backdrop-filter: none;
+  overflow-y: auto;
+}
+.modal {
+  width: 100%;
+  max-width: 1200px;
+  max-height: none;
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid #d4dfef;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.modal-heading {
+  margin-bottom: 20px;
+}
+.modal-heading h2 {
+  font-size: 30px;
+}
+.modal form {
+  display: grid;
+  gap: 6px;
+}
+.modal .field {
+  font-size: 12px;
+}
+.modal input,
+.modal select,
+.modal textarea {
+  min-height: 48px;
+  font-size: 14px;
+}
+.modal-actions {
+  justify-content: flex-start;
+  border: 0;
+  padding: 0;
+  margin-top: 12px;
+}
+.modal-actions button {
+  min-width: 220px;
+}
+.helper {
+  font-size: 14px;
+}
+.modal .history-list article {
+  font-size: 14px;
+}
+.modal h3 {
+  margin: 12px 0 10px;
+  font-size: 18px;
+}
+.modal form > p {
+  margin: 4px 0 14px;
+}
+.modal form > .field {
+  max-width: 100%;
+}
+.tech-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 4px 0 10px;
+}
+.review-content {
+  display: grid;
+  gap: 24px;
+}
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.review-grid > div {
+  display: grid;
+  gap: 18px;
+}
+.review-grid p {
+  font-size: 14px;
+}
+.review-grid .accent {
+  color: #3049ed;
+  font-weight: 600;
+}
+.modal .notice {
+  margin: 4px 0;
+}
+.modal .field input[readonly] {
+  background: #f3f6fa;
+}
+.booking-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.booking-main,
+.booking-summary {
+  min-width: 0;
+}
+.booking-main {
+  display: grid;
+  gap: 8px;
+}
+.booking-summary {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #d4dfef;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.booking-summary h3 {
+  margin: 0;
+}
+.booking-summary p {
+  color: #596e8c;
+}
+.booking-summary .notice {
+  font-size: 13px;
+}
+.booking-summary .accent {
+  color: #3049ed;
+}
+.booking-summary .stock-deficit {
+  color: #c52144;
+}
+.three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.maintenance-note {
+  margin-top: 24px;
+}
+.maintenance-note p {
+  margin-top: 20px;
+  color: #596e8c;
+  font-size: 14px;
+}
+.table-caption {
+  margin: 22px 0;
+  color: #506584;
+  font-size: 12px;
+}
+.offline-panel p {
+  margin: 18px 0;
+  color: #596e8c;
+  font-size: 14px;
+}
+.offline-panel small {
+  display: block;
+  margin-top: 18px;
+  color: #596e8c;
+}
+.offline-panel .page-actions button {
+  min-width: 220px;
+}
+.metrics-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.metrics-filters label {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+}
+.metrics-filters fieldset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.metrics-filters legend {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.metrics-filters fieldset input {
+  flex: 1;
+  min-width: 0;
+}
+.metrics-filters label input {
+  background: #f3f6fa;
+}
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 195px;
+  }
+  .workspace {
+    margin-left: 195px;
+  }
+  .modal-backdrop {
+    left: 195px;
+  }
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+    padding: 16px;
+  }
+  .sidebar .brand {
+    margin: 0;
+  }
+  nav {
+    display: flex;
+    overflow-x: auto;
+  }
+  nav a {
+    white-space: nowrap;
+    min-height: 38px;
+    padding: 8px;
+  }
+  .workspace {
+    margin: 0;
+  }
+  .topbar {
+    height: 56px;
+  }
+  .topbar-time {
+    display: none;
+  }
+  .content {
+    padding: 24px 16px;
+  }
+  .page-heading .primary {
+    width: 100%;
+  }
+  .booking-filters {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-backdrop {
+    left: 0;
+    top: 0;
+    padding: 16px;
+  }
+  .modal {
+    padding: 18px;
+  }
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+  .modal-actions button {
+    width: 100%;
+  }
+  .tech-tabs,
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+  .booking-form-layout {
+    grid-template-columns: 1fr;
+  }
+  .three-columns {
+    grid-template-columns: 1fr;
+  }
+  .metrics-filters {
+    grid-template-columns: 1fr;
   }
 }
